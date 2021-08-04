@@ -17,7 +17,7 @@ nodes:
   image: slankdev/frr
   interfaces:
   - { name: net0, type: direct, args: R1#net3 }
-  - { name: net1, type: direct, args: R3#net3 }
+  - { name: net1, type: direct, args: R2#net3 }
 
 - name: C1
   image: slankdev/frr
@@ -75,6 +75,6 @@ node_configs:
   - cmd: ip route add default via 10.3.0.1
 - name: C4
   cmds:
- - cmd: ip addr add 10.4.0.2/24 dev net0
+  - cmd: ip addr add 10.4.0.2/24 dev net0
   - cmd: ip route add default via 10.4.0.1
 
