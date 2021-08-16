@@ -61,7 +61,7 @@ do {
             perror("read");
         } else {
             //write(csock,&op,nbytes);
-/* 受信文字列をそのままクライアントへ返す(echo) */
+            /* 受信文字列をそのままクライアントへ返す(echo) */
         }
     } while ( nbytes != 0 ); /* read() が0 を返すまで(=End-Of-File) 繰り返す*/
     close(csock);
