@@ -16,6 +16,8 @@ struct sockaddr_in clt;
 struct hostent *cp;
 int clen,nbytes,reuse;
 char rbuf[1024];
+struct bgp_open op;
+
 /* ソケットの生成*/
 if ((sock=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP))<0) {
     perror("socket");
@@ -55,10 +57,10 @@ do {
     printf("[%s]\n",cp->h_name);
     do {
 /* クライアントからのメッセージ受信*/
-        if ( ( nbytes = read(csock,rbuf,sizeof(rbuf)) ) < 0) {
+        if ( ( nbytes = read(csock,&op,sizeof(rbuf)) ) < 0) {
             perror("read");
         } else {
-            write(csock,rbuf,nbytes);
+            //write(csock,&op,nbytes);
 /* 受信文字列をそのままクライアントへ返す(echo) */
         }
     } while ( nbytes != 0 ); /* read() が0 を返すまで(=End-Of-File) 繰り返す*/
