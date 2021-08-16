@@ -6,7 +6,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-int main(int argc,char **argv) {
+#include <errno.h>
+
+int main() {
+   
 int sock,csock;
 struct sockaddr_in svr;
 struct sockaddr_in clt;
@@ -51,7 +54,9 @@ exit(2);
 }
 /* クライアントのホスト情報の取得*/
 cp = gethostbyaddr((char *)&clt.sin_addr,sizeof(struct in_addr),AF_INET);
-printf("[%s]\n",cp->h_name);
+printf("fugafuga\n");
+//printf("[%s]\n",cp->h_name);
+printf("fuga\n");
 do {
 /* クライアントからのメッセージ受信*/
 if ( ( nbytes = read(csock,rbuf,sizeof(rbuf)) ) < 0) {

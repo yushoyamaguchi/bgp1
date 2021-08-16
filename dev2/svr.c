@@ -9,7 +9,7 @@
 
 #include "bgp.h"
 
-int exec_server() {
+int exec_server() {   
 int sock,csock;
 struct sockaddr_in svr;
 struct sockaddr_in clt;
@@ -17,6 +17,8 @@ struct hostent *cp;
 int clen,nbytes,reuse;
 char rbuf[1024];
 struct bgp_open op;
+
+
 
 /* ソケットの生成*/
 if ((sock=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP))<0) {
@@ -35,10 +37,12 @@ svr.sin_family=AF_INET;
 svr.sin_addr.s_addr=htonl(INADDR_ANY); /* 受付側のIP アドレスは任意*/
 svr.sin_port=htons(179); /* ポート番号179 を介して受け付ける*/
 /* ソケットにソケットアドレスを割り当てる*/
+
 if(bind(sock,(struct sockaddr *)&svr,sizeof(svr))<0) {
     perror("bind");
     exit(1);
 }
+
 /* 待ち受けクライアント数の設定*/
 
 if (listen(sock,5)<0) { /* 待ち受け数に5 を指定*/
@@ -48,16 +52,18 @@ if (listen(sock,5)<0) { /* 待ち受け数に5 を指定*/
 do {
 /* クライアントの受付*/
     clen = sizeof(clt);
+
     if ( ( csock = accept(sock,(struct sockaddr *)&clt,&clen) ) <0 ) {
         perror("accept");
         exit(2);
     }
 /* クライアントのホスト情報の取得*/
     cp = gethostbyaddr((char *)&clt.sin_addr,sizeof(struct in_addr),AF_INET);
-    printf("[%s]\n",cp->h_name);
+    //printf("[%s]\n",cp->h_name);
+    printf("connected!!\n");
     do {
 /* クライアントからのメッセージ受信*/
-        if ( ( nbytes = read(csock,&op,sizeof(rbuf)) ) < 0) {
+        if ( ( nbytes = read(csock,&op,sizeof(op)) ) < 0) {
             perror("read");
         } else {
             //write(csock,&op,nbytes);
