@@ -1,6 +1,6 @@
 nodes:
 - name: R1
-  image: yamaguchi-bgp:test
+  image: slankdev/frr
   interfaces:
   - { name: net0, type: direct, args: R2#net0 }
   - { name: net1, type: direct, args: C1#net0 }
@@ -34,7 +34,18 @@ node_configs:
   - cmd: ip addr add 10.255.1.1/24 dev net0
   - cmd: ip addr add 10.1.0.1/24 dev net1
   - cmd: ip addr add 10.2.0.1/24 dev net2
-  - cmd: /work/bgp_open --server
+  - cmd: /usr/lib/frr/frr start
+  - cmd: >-
+      vtysh -c 'conf te'
+      -c 'router bgp 1'
+      -c ' bgp router-id 1.1.1.1'
+      -c ' neighbor 10.255.1.2 remote-as 2'
+      -c ' !'
+      -c ' address-family ipv4 unicast'
+      -c '  redistribute connected'
+      -c ' exit-address-family'
+      -c '!'
+
 - name: R2
   cmds:
   - cmd: ip addr add 10.255.1.2/24 dev net0
@@ -46,12 +57,12 @@ node_configs:
       -c 'router bgp 2'
       -c ' bgp router-id 2.2.2.2'
       -c ' neighbor 10.255.1.1 remote-as 1'
-      -c ' neighbor 10.255.1.1 timer connect 1'
       -c ' !'
       -c ' address-family ipv4 unicast'
       -c '  redistribute connected'
       -c ' exit-address-family'
       -c '!'
+
 - name: C1
   cmds:
   - cmd: ip addr add 10.1.0.2/24 dev net0

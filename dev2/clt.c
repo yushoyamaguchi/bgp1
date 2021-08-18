@@ -15,11 +15,11 @@ void bgpOpenSet(struct bgp_open *op,struct in_addr *addr){
 	for(i=0;i<MARKER_NUM;i++){
 		op->marker[i]=0xff;
 	}
-	op->len=29;
+	op->len=htons(29);
 	op->type=1;
 	op->version=4;
-	op->myas=1;
-	op->holdtime=180;
+	op->myas=htons(1);
+	op->holdtime=htons(180);
 	op->id=addr->s_addr;
 	op->opt_len=0;
 }
@@ -47,13 +47,15 @@ clt.sin_family=AF_INET;
 clt.sin_addr.s_addr=inet_addr(ip_addr);
 clt.sin_port=htons(179);
 
+addr.s_addr=inet_addr(ip_addr);
+
 
   if (connect(sock, (struct sockaddr *)&clt,sizeof(clt))  ==-1) {
     perror("client : connect");
-
     close(sock);
     exit(1);
   }
+
 
 //printf("Input something    ctrl-C to end\n");
 while (fgets(inp, sizeof(inp), stdin)!= NULL){
