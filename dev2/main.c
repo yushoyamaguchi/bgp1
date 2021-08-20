@@ -30,6 +30,7 @@ int main(int argc,char **argv)
     printf("input ip address");
     scanf("%s", addr);
     exec_client(addr);
+    printf("end\n");
   }
 
   return 0;

@@ -98,29 +98,18 @@ do{
         }
         if(FD_ISSET(sock,&rfds)) { /* ソケットから受信したなら */
             //printf("cccc\n");
-            memset(&op_recieve,0,sizeof(op_recieve));
-            read(sock,&op_recieve,sizeof(op_recieve));
-            if(op_recieve.type==1){
-                memset(&op,0,sizeof(op));
-                bgpOpenSet(&op,&myaddr);
-                write(sock,&op,BGP_OPEN_LEN);
-
-                //keepalive
-                memset(&keep,0,sizeof(keep));
-                bgpKeepSet(&keep);
-                write(sock,&keep,BGP_HD_LEN);
-            }
-
-            /*
+            /*memset(&op_recieve,0,sizeof(op_recieve));
+            read(sock,&op_recieve,sizeof(op_recieve));*/
             memset(&op,0,sizeof(op));
             bgpOpenSet(&op,&myaddr);
             write(sock,&op,len);
 
             //keepalive
-            memset(&keep,0,sizeof(keep));
+            /*memset(&keep,0,sizeof(keep));
             bgpKeepSet(&keep);
-            write(sock,&keep,len);*/
+            write(sock,&keep,len);
 
+            */
             
         }
     }

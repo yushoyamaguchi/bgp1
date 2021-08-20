@@ -12,43 +12,35 @@
 
 #include "bgp.h"
 
-void bgpOpenSet(struct bgp_open *op,struct in_addr *myaddr){
+void bgpOpenSet(struct bgp_open *op,struct in_addr *addr){
 	int i;
 	for(i=0;i<MARKER_NUM;i++){
 		op->marker[i]=0xff;
 	}
 	op->len=htons(29);
-	op->type=TYPE_OPEN;
-	op->version=VERSION;
+	op->type=1;
+	op->version=4;
 	op->myas=htons(1);
 	op->holdtime=htons(180);
-	op->id=inet_addr("10.255.1.1");
+	op->id=addr->s_addr;
 	op->opt_len=0;
 }
-
-void bgpKeepSet(struct bgp_hd *keep){
-	int i;
-	for(i=0;i<MARKER_NUM;i++){
-		keep->marker[i]=0xff;
-	}
-	keep->len=htons(BGP_HD_LEN);
-	keep->type=TYPE_KEEP;
-}
-
-
 
 int exec_client(char *ip_addr) {
 int sock;
 struct sockaddr_in clt;
 struct hostent *hp;
-struct in_addr myaddr;
+struct in_addr addr;
 int len;
 char buf[32];
 char inp[32];
 int buf_len;
 struct bgp_open op;
 struct bgp_open_opt op_recieve;
-struct bgp_hd keep;
+{
+    /* data */
+};
+
 fd_set rfds;
 
 struct timeval tv;
@@ -64,6 +56,8 @@ bzero(&clt,sizeof(clt));
 clt.sin_family=AF_INET;
 clt.sin_addr.s_addr=inet_addr(ip_addr);
 clt.sin_port=htons(179);
+
+addr.s_addr=inet_addr(ip_addr);
 
 
 if (connect(sock, (struct sockaddr *)&clt,sizeof(clt))  ==-1) {
@@ -83,13 +77,12 @@ do{
         if(FD_ISSET(0,&rfds)) { /* 標準入力から入力があったなら */
             if(fgets(inp, sizeof(inp), stdin)!=NULL){
                 len=BGP_OPEN_LEN;
-	            bgpOpenSet(&op,&myaddr);
+	            bgpOpenSet(&op,&addr);
 	            write(sock,&op,len);
-	            memset(&op, 0, sizeof(op));
+	            memset(inp, 0, sizeof(inp));
 	            printf("Input something    ctrl-C to end\n");
             }
             else if(fgets(inp, sizeof(inp), stdin)==NULL) {
-                printf("kk\n");
                 close(sock);
                 exit(0);
                 return 0;
@@ -97,36 +90,20 @@ do{
 
         }
         if(FD_ISSET(sock,&rfds)) { /* ソケットから受信したなら */
-            //printf("cccc\n");
-            memset(&op_recieve,0,sizeof(op_recieve));
-            read(sock,&op_recieve,sizeof(op_recieve));
-            if(op_recieve.type==1){
-                memset(&op,0,sizeof(op));
-                bgpOpenSet(&op,&myaddr);
-                write(sock,&op,BGP_OPEN_LEN);
-
-                //keepalive
-                memset(&keep,0,sizeof(keep));
-                bgpKeepSet(&keep);
-                write(sock,&keep,BGP_HD_LEN);
-            }
-
-            /*
-            memset(&op,0,sizeof(op));
-            bgpOpenSet(&op,&myaddr);
-            write(sock,&op,len);
-
-            //keepalive
-            memset(&keep,0,sizeof(keep));
-            bgpKeepSet(&keep);
-            write(sock,&keep,len);*/
-
             
         }
     }
 }while(1);
 
- printf("aa\n");
+//printf("Input something    ctrl-C to end\n");
+/*while (fgets(inp, sizeof(inp), stdin)!= NULL){
+  	len=BGP_OPEN_LEN;
+	bgpOpenSet(&op,&addr);
+	write(sock,&op,len);
+	memset(inp, 0, sizeof(inp));
+	printf("Input something    ctrl-C to end\n");
+
+}*/
  close(sock);
  return 0;
 }
