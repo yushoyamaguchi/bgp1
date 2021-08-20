@@ -72,6 +72,12 @@ int exec_client(char *ip_addr) {
         exit(1);
     }
 
+    printf("ctrl-C to end\n");
+
+    /*bgpOpenSet(&op,&myaddr);
+	write(sock,&op,BGP_OPEN_LEN);
+	memset(&op, 0, sizeof(op));*/
+
     do{
         FD_ZERO(&rfds);
         FD_SET(0,&rfds);
@@ -81,14 +87,7 @@ int exec_client(char *ip_addr) {
 
         if(select(sock+1,&rfds,NULL,NULL,&tv)>0) {
             if(FD_ISSET(0,&rfds)) { /* 標準入力から入力があったなら */
-                if(fgets(inp, sizeof(inp), stdin)!=NULL){
-                    len=BGP_OPEN_LEN;
-	                bgpOpenSet(&op,&myaddr);
-	                write(sock,&op,len);
-	                memset(&op, 0, sizeof(op));
-	                printf("Input something    ctrl-C to end\n");
-                }
-                else if(fgets(inp, sizeof(inp), stdin)==NULL) {
+                if(fgets(inp, sizeof(inp), stdin)==NULL) {
                     printf("kk\n");
                     close(sock);
                     exit(0);
