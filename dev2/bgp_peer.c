@@ -74,10 +74,6 @@ int exec_client(char *ip_addr) {
 
     printf("ctrl-C to end\n");
 
-    /*bgpOpenSet(&op,&myaddr);
-	write(sock,&op,BGP_OPEN_LEN);
-	memset(&op, 0, sizeof(op));*/
-
     do{
         FD_ZERO(&rfds);
         FD_SET(0,&rfds);
