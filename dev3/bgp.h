@@ -47,6 +47,23 @@ struct bgp_open_opt
     uint8_t opt[46];
   };  
 
+enum PeerState {
+  Idle,
+  Connect,
+  Active,
+  OpenSent,
+  OpenConfirm,
+  Established
+} ;
+
+
+struct peer
+{
+  enum PeerState state;
+  
+};
+
+
 
 
 #endif
