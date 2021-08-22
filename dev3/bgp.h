@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 
 #ifndef _BGP_H_
@@ -56,15 +55,20 @@ enum PeerState {
   Established
 } ;
 
-
 struct Peer
 {
+  int remote_asn;
+	int timer_connect;
   enum PeerState state;
-  struct bgp_open op;
-  struct bgp_open_opt op_recieve;
-  struct bgp_hd keep;
   
 };
+
+struct BGP {
+	int asn;
+	struct Peer peers[256];
+};
+
+
 
 
 

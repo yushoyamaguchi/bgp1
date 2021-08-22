@@ -88,7 +88,6 @@ int exec_peer(char *ip_addr) {
         if(select(sock+1,&rfds,NULL,NULL,&tv)>0) {
             if(FD_ISSET(0,&rfds)) { /* 標準入力から入力があったなら */
                 if(fgets(inp, sizeof(inp), stdin)==NULL) {
-                    printf("kk\n");
                     close(sock);
                     exit(0);
                     return 0;
@@ -121,7 +120,6 @@ int exec_peer(char *ip_addr) {
         }
     }while(1);
 
-    printf("aa\n");
     close(sock);
     return 0;
 }
