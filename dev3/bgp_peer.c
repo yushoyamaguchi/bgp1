@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
+#include <jansson.h>
 
 
 #include "bgp.h"
@@ -35,6 +36,34 @@ void bgpKeepSet(struct bgp_hd *keep){
 	keep->type=TYPE_KEEP;
 }
 
+void bgp_process_open_sent(struct Peer *p,char *bgp_msg){
+
+}  
+
+void bgp_process_open_confirm(struct Peer *p,char *bgp_msg){
+    
+}  
+
+void bgp_process_established(struct Peer *p,char *bgp_msg){
+    
+}  
+
+void bgp_process(struct Peer *p,char *bgp_msg) {
+	switch (p->state) {
+		case OpenSent:
+			bgp_process_open_sent(p, bgp_msg);
+			break;
+        case OpenConfirm:
+			bgp_process_open_confirm(p, bgp_msg);
+			break;
+        case Established:
+			bgp_process_established(p, bgp_msg);
+			break;        
+		default:
+			break;
+	}
+}
+
 
 
 int exec_peer(char *ip_addr) {
@@ -43,8 +72,7 @@ int exec_peer(char *ip_addr) {
     struct hostent *hp;
     struct in_addr myaddr;
     int len;
-    char buf[32];
-    char inp[32];
+
     int buf_len;
     struct bgp_open op;
     struct bgp_open_opt op_recieve;
@@ -52,11 +80,10 @@ int exec_peer(char *ip_addr) {
     struct Peer peer;
     fd_set rfds;
 
-    struct timeval tv;
+    char buf[4096];
+    char bgpmsg_buf[4096];
 
-
-
-    if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+        if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
         perror("client : socket");
         exit(1);
     }
@@ -73,56 +100,21 @@ int exec_peer(char *ip_addr) {
         exit(1);
     }
 
-    /*memset(&op,0,sizeof(op));
+    memset(&op,0,sizeof(op));
     bgpOpenSet(&op,&myaddr);
-    write(sock,&op,BGP_OPEN_LEN);*/
+    write(sock,&op,BGP_OPEN_LEN);
+    peer.state=OpenSent;
 
-    printf("ctrl-C to end\n");
+    while(1){
+        memcpy(buf,0,sizeof(buf));
+        read(sock,buf,sizeof(buf));
+        //複数メッセージが入ってるパターンに対応させる
+        memcpy(bgpmsg_buf,buf,sizeof(buf));
 
-    do{
-        FD_ZERO(&rfds);
-        FD_SET(0,&rfds);
-        FD_SET(sock,&rfds);
-        tv.tv_sec = 1;
-        tv.tv_usec = 0;
+    }
 
-        if(select(sock+1,&rfds,NULL,NULL,&tv)>0) {
-            if(FD_ISSET(0,&rfds)) { /* 標準入力から入力があったなら */
-                if(fgets(inp, sizeof(inp), stdin)==NULL) {
-                    printf("kk\n");
-                    close(sock);
-                    exit(0);
-                    return 0;
-                }
 
-            }
-            if(FD_ISSET(sock,&rfds)) { /* ソケットから受信したなら */
-                //printf("cccc\n");
-                memset(&op_recieve,0,sizeof(op_recieve));
-                read(sock,&op_recieve,sizeof(op_recieve));
-                if(op_recieve.type==TYPE_OPEN){
-                    memset(&op,0,sizeof(op));
-                    bgpOpenSet(&op,&myaddr);
-                    write(sock,&op,BGP_OPEN_LEN);
 
-                    //keepalive
-                    /*memset(&keep,0,sizeof(keep));
-                    bgpKeepSet(&keep);
-                    write(sock,&keep,BGP_HD_LEN);*/
-                }
-                else if(op_recieve.type==TYPE_KEEP){
-                    //keepalive
-                    memset(&keep,0,sizeof(keep));
-                    bgpKeepSet(&keep);
-                    write(sock,&keep,BGP_HD_LEN);
-                }
-
-            
-            }
-        }
-    }while(1);
-
-    printf("aa\n");
     close(sock);
     return 0;
 }
