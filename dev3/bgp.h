@@ -57,9 +57,12 @@ enum PeerState {
 } ;
 
 
-struct peer
+struct Peer
 {
   enum PeerState state;
+  struct bgp_open op;
+  struct bgp_open_opt op_recieve;
+  struct bgp_hd keep;
   
 };
 

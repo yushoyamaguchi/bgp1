@@ -72,7 +72,9 @@ int exec_peer(char *ip_addr) {
         exit(1);
     }
 
-
+    /*memset(&op,0,sizeof(op));
+    bgpOpenSet(&op,&myaddr);
+    write(sock,&op,BGP_OPEN_LEN);*/
 
     printf("ctrl-C to end\n");
 
@@ -103,9 +105,9 @@ int exec_peer(char *ip_addr) {
                     write(sock,&op,BGP_OPEN_LEN);
 
                     //keepalive
-                    memset(&keep,0,sizeof(keep));
+                    /*memset(&keep,0,sizeof(keep));
                     bgpKeepSet(&keep);
-                    write(sock,&keep,BGP_HD_LEN);
+                    write(sock,&keep,BGP_HD_LEN);*/
                 }
                 else if(op_recieve.type==TYPE_KEEP){
                     //keepalive

@@ -1,0 +1,8 @@
+{
+	"local_as": 1,
+	"neighbor": [
+		{
+			"remote_as": 2
+		}
+	]
+}
