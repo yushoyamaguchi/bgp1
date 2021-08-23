@@ -34,7 +34,6 @@ node_configs:
   - cmd: ip addr add 10.255.1.1/24 dev net0
   - cmd: ip addr add 10.1.0.1/24 dev net1
   - cmd: ip addr add 10.2.0.1/24 dev net2
-  - cmd: /work/bgp_open --server
 - name: R2
   cmds:
   - cmd: ip addr add 10.255.1.2/24 dev net0

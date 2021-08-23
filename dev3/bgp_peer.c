@@ -36,25 +36,40 @@ void bgpKeepSet(struct bgp_hd *keep){
 	keep->type=TYPE_KEEP;
 }
 
-void bgp_process_open_sent(struct Peer *p,char *bgp_msg){
-
+void bgp_process_open_sent(struct Peer *p,char *bgp_msg,int sock){
+    struct bgp_open_opt open;
+    struct bgp_hd keep;
+    memcpy(&open,bgp_msg,sizeof(open));
+    if(open.type==TYPE_OPEN){
+        p->state=OpenConfirm;
+        memset(&keep,0,sizeof(keep));
+        bgpKeepSet(&keep);
+        write(sock,&keep,BGP_HD_LEN);
+    }
 }  
 
-void bgp_process_open_confirm(struct Peer *p,char *bgp_msg){
-    
+void bgp_process_open_confirm(struct Peer *p,char *bgp_msg,int sock){
+    struct bgp_hd keep;
+    memcpy(&keep,bgp_msg,sizeof(keep));
+    if(keep.type==TYPE_KEEP){
+        p->state=Established;
+        memset(&keep,0,sizeof(keep));
+        bgpKeepSet(&keep);
+        write(sock,&keep,BGP_HD_LEN);
+    }    
 }  
 
 void bgp_process_established(struct Peer *p,char *bgp_msg){
     
 }  
 
-void bgp_process(struct Peer *p,char *bgp_msg) {
+void bgp_process(struct Peer *p,char *bgp_msg,int sock) {
 	switch (p->state) {
 		case OpenSent:
-			bgp_process_open_sent(p, bgp_msg);
+			bgp_process_open_sent(p, bgp_msg,sock);
 			break;
         case OpenConfirm:
-			bgp_process_open_confirm(p, bgp_msg);
+			bgp_process_open_confirm(p, bgp_msg,sock);
 			break;
         case Established:
 			bgp_process_established(p, bgp_msg);
@@ -99,17 +114,19 @@ int exec_peer(char *ip_addr) {
         close(sock);
         exit(1);
     }
-
+    
+    printf("connect\n");
     memset(&op,0,sizeof(op));
     bgpOpenSet(&op,&myaddr);
     write(sock,&op,BGP_OPEN_LEN);
     peer.state=OpenSent;
 
     while(1){
-        memcpy(buf,0,sizeof(buf));
+        memset(buf,0,sizeof(buf));
         read(sock,buf,sizeof(buf));
         //複数メッセージが入ってるパターンに対応させる
         memcpy(bgpmsg_buf,buf,sizeof(buf));
+        bgp_process(&peer,bgpmsg_buf,sock);
 
     }
 
