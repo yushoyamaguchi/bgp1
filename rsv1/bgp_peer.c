@@ -14,7 +14,6 @@
 #include "bgp.h"
 
 
-
 void bgpOpenSet(struct bgp_open *op,struct in_addr *myaddr){
 	int i;
 	for(i=0;i<MARKER_NUM;i++){
