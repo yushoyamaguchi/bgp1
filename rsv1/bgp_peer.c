@@ -10,7 +10,6 @@
 #include <sys/time.h>
 #include <jansson.h>
 
-
 #include "bgp.h"
 
 
