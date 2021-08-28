@@ -8,6 +8,6 @@ main.o:	main.c bgp.h
 
 IMG := yamaguchi-bgp:test
 docker-build:
-	docker build -t $(IMG) .
+	docker build -t $(IMG) --no-cache.
 docker-run-test: docker-build
 	docker run --rm -it $(IMG) bash

@@ -1,6 +1,6 @@
 FROM ubuntu:focal
-RUN apt -y update
-RUN apt -y install iproute2 iputils-ping net-tools build-essential tcpdump libjansson-dev
+RUN apt-get -y update
+RUN apt-get -y install iproute2 iputils-ping net-tools build-essential tcpdump libjansson-dev
 
 WORKDIR /work
 COPY ./Makefile /work/Makefile

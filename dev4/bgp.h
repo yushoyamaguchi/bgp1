@@ -12,6 +12,17 @@
 #define TYPE_NOTIF 3
 #define TYPE_KEEP 4
 
+#define ATTR_ORIGIN 1
+#define ATTR_ASPATH 2
+#define ATTR_NEXTHOP 3
+#define ATTR_MED 4
+
+#define ORIGIN_IGP 0
+#define ORIGIN_EGP 1
+#define ORIGIN_INCOMPLETE 2
+
+#define AS_SEQUENCE 2
+
 struct bgp_hd
   {
     uint8_t marker[16];
@@ -45,6 +56,57 @@ struct bgp_open_opt
     uint8_t opt_len;
     uint8_t opt[46];
   };  
+
+  
+struct bgp_update
+  {
+    uint8_t marker[16];
+    uint16_t len;
+    uint8_t type;
+    uint16_t withdrawn_len;
+    uint8_t contents[64];
+  };  
+
+struct path_attr_origin{
+  uint8_t flags;
+  uint8_t type_code;
+  uint8_t length;
+  uint8_t origin;
+};
+
+struct aspath_segment{
+  uint8_t segment_type;
+  uint8_t number_of_as;
+  uint16_t as2[1];  //可変長
+};
+
+
+struct path_attr_aspath{
+  uint8_t flags;
+  uint8_t type_code;
+  uint16_t length;
+  struct aspath_segment seg;  
+};
+
+struct path_attr_nexthop{
+  uint8_t flags;
+  uint8_t type_code;
+  uint8_t length;
+  uint32_t nexthop;
+};
+
+struct path_attr_med{
+  uint8_t flags;
+  uint8_t type_code;
+  uint8_t length;
+  uint32_t med;
+};
+
+struct bgp_nlri{
+  uint8_t subnet_mask;
+  uint8_t ip_addr[4];
+};
+
 
 enum PeerState {
   Idle,
