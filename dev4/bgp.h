@@ -22,6 +22,7 @@
 #define ORIGIN_INCOMPLETE 2
 
 #define AS_SEQUENCE 2
+#define BYTE_SIZE 8
 
 struct bgp_hd
   {

@@ -56,12 +56,30 @@ void nextHopSet(struct path_attr_nexthop *nh){
     nh->flags=0x40;
     nh->type_code=ATTR_NEXTHOP;
     nh->length=4;
-    nh->nexthop=inet_addr("10.255.1.1");
+    nh->nexthop=inet_addr("10.255.1.1");    //nexthopは自分自身のアドレス10.255.1.1
 }
 
-void nlriSet(struct bgp_nlri *nlri,int subnet_mask,struct in_addr addr){
+void medSet(struct path_attr_med *med){
+    med->flags=0x80;    //optional
+    med->type_code=ATTR_MED;
+    med->length=4;
+    med->med=0;
+}
+
+void nlriSet(struct bgp_nlri *nlri,int subnet_mask,u_int32_t addr){
     nlri->subnet_mask=subnet_mask;
     //サブネットマスクに合わせて必要な情報をip_addrに入れる
+    //addrにはtcp/ipの仕様(ビッグエンディアン)に並べ替え済みの値が格納されている。
+    uint8_t *read_addr;
+    read_addr=&addr;
+    int mask_calc=subnet_mask;
+    int i=0;
+    while(mask_calc>BYTE_SIZE){
+        nlri->ip_addr[i]=*read_addr;
+        read_addr=read_addr+sizeof(uint8_t);
+        i++;
+        mask_calc-=BYTE_SIZE;
+    }
 }
 
 
@@ -75,12 +93,31 @@ void bgpUpdateSet(struct bgp_update *update){
     update->withdrawn_len=0;
     look_place++;   //total path attr lengthの分
     struct path_attr_origin origin;
+    struct path_attr_aspath aspath;
+    struct path_attr_nexthop nexthop;
+    struct path_attr_med med;
     originSet(&origin);
     memcpy(look_place,&origin,sizeof(origin));
     look_place=look_place+sizeof(origin);
+    asPathSet(&aspath);
+    memcpy(look_place,&aspath,sizeof(aspath));
+    look_place=look_place+sizeof(aspath);
+    nextHopSet(&nexthop);
+    memcpy(look_place,&nexthop,sizeof(nexthop));
+    look_place=look_place+sizeof(nexthop);
+    medSet(&med);
+    memcpy(look_place,&med,sizeof(med));
+    look_place=look_place+sizeof(med);
+    update->contents[0]=((look_place-update->contents)/sizeof(uint8_t))-1;
 
 
-    update->contents[0]==28; //total length後で変える
+
+
+
+    //nlriやる    
+
+
+    
 }
 
 void bgp_process_open_sent(struct Peer *p,char *bgp_msg,int sock){
