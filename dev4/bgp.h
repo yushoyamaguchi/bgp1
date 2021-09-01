@@ -29,7 +29,7 @@ struct bgp_hd
     uint8_t marker[16];
     uint16_t len;
     uint8_t type;
-  };
+  }__attribute__((__packed__));
 
 
 struct bgp_open
@@ -42,7 +42,7 @@ struct bgp_open
     uint16_t holdtime;
     uint32_t id;
     uint8_t opt_len;
-  };
+  }__attribute__((__packed__));
 
 
 struct bgp_open_opt
@@ -56,7 +56,7 @@ struct bgp_open_opt
     uint32_t id;
     uint8_t opt_len;
     uint8_t opt[46];
-  };  
+  }__attribute__((__packed__));  
 
   
 struct bgp_update
@@ -66,47 +66,48 @@ struct bgp_update
     uint8_t type;
     uint16_t withdrawn_len;
     uint8_t contents[64];
-  };  
+  }__attribute__((__packed__));  
 
 struct path_attr_origin{
   uint8_t flags;
   uint8_t type_code;
   uint8_t length;
   uint8_t origin;
-};
+}__attribute__((__packed__));
 
 struct aspath_segment{
   uint8_t segment_type;
   uint8_t number_of_as;
-  uint16_t as2[1];  //可変長
-};
+  uint32_t as2;  //可変長
+}__attribute__((__packed__));
 
 
 struct path_attr_aspath{
   uint8_t flags;
   uint8_t type_code;
   uint16_t length;
-  struct aspath_segment seg;  
-};
+  struct aspath_segment seg; 
+
+}__attribute__((__packed__));
 
 struct path_attr_nexthop{
   uint8_t flags;
   uint8_t type_code;
   uint8_t length;
   uint32_t nexthop;
-};
+}__attribute__((__packed__));
 
 struct path_attr_med{
   uint8_t flags;
   uint8_t type_code;
   uint8_t length;
   uint32_t med;
-};
+}__attribute__((__packed__));
 
 struct bgp_nlri{
   uint8_t subnet_mask;
   uint8_t ip_addr[4];
-};
+}__attribute__((__packed__));
 
 
 enum PeerState {

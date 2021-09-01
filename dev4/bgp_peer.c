@@ -13,6 +13,8 @@
 #include "bgp.h"
 
 
+
+
 void bgpOpenSet(struct bgp_open *op,struct in_addr *myaddr){
 	int i;
 	for(i=0;i<MARKER_NUM;i++){
@@ -42,8 +44,9 @@ void asPathSet(struct path_attr_aspath *aspath){
     aspath->length=htons(6);
     aspath->seg.segment_type=AS_SEQUENCE;
     aspath->seg.number_of_as=1;
-    aspath->seg.as2[0]=htons(1);    //as番号は1
+    aspath->seg.as2=htonl(1);    //as番号は1
 }
+
 
 void originSet(struct path_attr_origin *origin){
     origin->flags=0x40;
@@ -83,7 +86,7 @@ void nlriSet(struct bgp_nlri *nlri,int subnet_mask,u_int32_t addr){
 }
 
 
-void bgpUpdateSet(struct bgp_update *update){
+int bgpUpdateSet(struct bgp_update *update){
     int i;
     uint8_t *look_place=update->contents;
 	for(i=0;i<MARKER_NUM;i++){
@@ -91,33 +94,37 @@ void bgpUpdateSet(struct bgp_update *update){
 	}
     update->type=TYPE_UPDATE;
     update->withdrawn_len=0;
-    look_place++;   //total path attr lengthの分
+    look_place+=2;   //total path attr lengthの分
     struct path_attr_origin origin;
     struct path_attr_aspath aspath;
     struct path_attr_nexthop nexthop;
     struct path_attr_med med;
+    struct bgp_nlri nlri;
+    
     originSet(&origin);
     memcpy(look_place,&origin,sizeof(origin));
     look_place=look_place+sizeof(origin);
     asPathSet(&aspath);
     memcpy(look_place,&aspath,sizeof(aspath));
+    //printf("size of aspath = %zu\n",sizeof(struct path_attr_aspath));
     look_place=look_place+sizeof(aspath);
     nextHopSet(&nexthop);
     memcpy(look_place,&nexthop,sizeof(nexthop));
     look_place=look_place+sizeof(nexthop);
+    //printf("size of nexthop = %zu\n",sizeof(struct path_attr_nexthop));
     medSet(&med);
     memcpy(look_place,&med,sizeof(med));
     look_place=look_place+sizeof(med);
-    update->contents[0]=((look_place-update->contents)/sizeof(uint8_t))-1;
+    update->contents[1]=((look_place-update->contents)/sizeof(uint8_t))-2;  //255以上の長さに対応できるように改良する
+    //最後の2はtotal path attr lengthのバイト数
 
+    nlriSet(&nlri,24,inet_addr("10.1.0.0"));
+    memcpy(look_place,&nlri,sizeof(nlri)-sizeof(u_int8_t)*1);
+    look_place=look_place+4*(sizeof(u_int8_t)); //とりあえずこの値で
 
+    update->len=htons(21+(look_place-update->contents)/sizeof(uint8_t));
 
-
-
-    //nlriやる    
-
-
-    
+    return (21+(look_place-update->contents)/sizeof(uint8_t));
 }
 
 void bgp_process_open_sent(struct Peer *p,char *bgp_msg,int sock){
@@ -147,14 +154,18 @@ void bgp_process_established(struct Peer *p,char *bgp_msg,int sock){
     struct bgp_hd keep;
     memcpy(&keep,bgp_msg,sizeof(keep));
     if(keep.type==TYPE_KEEP){
-        p->state=Established;
         memset(&keep,0,sizeof(keep));
         bgpKeepSet(&keep);
         write(sock,&keep,BGP_HD_LEN);
     }
     else if(keep.type==TYPE_UPDATE){
-        struct bgp_update update;
-        memcpy(&update,bgp_msg,sizeof(update));
+        struct bgp_update update;        
+        memset(&update,0,sizeof(update));
+        int update_size;
+        update_size=bgpUpdateSet(&update);
+        printf("%d\n",update_size);
+        write(sock,&update,update_size*sizeof(uint8_t));
+        printf("update send\n");
     }  
 }  
 
@@ -189,6 +200,8 @@ int exec_peer(char *ip_addr) {
     struct bgp_hd keep;
     struct Peer peer;
     fd_set rfds;
+
+    printf("size of nexthop = %zu\n",sizeof(struct path_attr_nexthop));
 
     char buf[4096];
     char bgpmsg_buf[4096];
