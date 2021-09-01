@@ -4,3 +4,4 @@ clt.o
 bgp_peer.o
 bgp_open
 mybgp
+*.pcap
