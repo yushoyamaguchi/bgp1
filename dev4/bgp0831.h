@@ -1,6 +1,5 @@
 #include <stdlib.h>
 
-
 #ifndef _BGP_H_
 #define _BGP_H_
 
@@ -79,7 +78,7 @@ struct path_attr_origin{
 struct aspath_segment{
   uint8_t segment_type;
   uint8_t number_of_as;
-  uint16_t as2;  //可変長
+  uint32_t as2;  //可変長
 }__attribute__((__packed__));
 
 
@@ -87,15 +86,7 @@ struct path_attr_aspath{
   uint8_t flags;
   uint8_t type_code;
   uint16_t length;
-  struct aspath_segment seg[1]; //複数の場合もある
-
-}__attribute__((__packed__));
-
-struct path_attr_aspath_short{
-  uint8_t flags;
-  uint8_t type_code;
-  uint8_t length;
-  struct aspath_segment seg[1]; //複数の場合もある
+  struct aspath_segment seg; 
 
 }__attribute__((__packed__));
 
@@ -118,23 +109,6 @@ struct bgp_nlri{
   uint8_t ip_addr[4];
 }__attribute__((__packed__));
 
-struct route_state{
-  _Bool isValid;
-  _Bool isDampening;
-  _Bool isRoutingTable;
-  _Bool isSummaryOnly;
-  _Bool isBest;
-  _Bool isIBGP;
-}__attribute__((__packed__));
-
-struct bgp_table{
-  struct route_state state;
-  uint32_t addr;
-  uint8_t subnet_mask;
-  uint32_t nexthop;
-  uint16_t path[256];
-}__attribute__((__packed__));
-
 
 enum PeerState {
   Idle,
@@ -144,7 +118,6 @@ enum PeerState {
   OpenConfirm,
   Established
 } ;
-
 
 struct Peer
 {
@@ -157,8 +130,6 @@ struct Peer
 struct BGP {
 	int asn;
 	struct Peer peers[256];
-  struct bgp_table table[256];
-  int num_of_table;
 };
 
 

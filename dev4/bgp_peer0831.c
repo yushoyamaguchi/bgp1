@@ -42,9 +42,9 @@ void asPathSet(struct path_attr_aspath *aspath){
     aspath->flags=0x50; //属性長2オクテットで固定
     aspath->type_code=ATTR_ASPATH;
     aspath->length=htons(6);
-    aspath->seg[0].segment_type=AS_SEQUENCE;
-    aspath->seg[0].number_of_as=1;
-    aspath->seg[0].as2=htonl(1);    //as番号は1
+    aspath->seg.segment_type=AS_SEQUENCE;
+    aspath->seg.number_of_as=1;
+    aspath->seg.as2=htonl(1);    //as番号は1
 }
 
 
@@ -150,69 +150,7 @@ void bgp_process_open_confirm(struct Peer *p,char *bgp_msg,int sock){
     }  
 }  
 
-void asPathWrite(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packet){
-    int i=0;
-    uint8_t *reading;
-    struct path_attr_aspath *aspath5;
-    struct path_attr_aspath_short *aspath4;
-    if(*read_packet==0x05){
-        aspath5=read_packet;   //AS2個目以降はみ出てる
-        reading=aspath5->seg;
-        while(read_packet+aspath5->length<reading){
-            bgp->table[bgp->num_of_table].path[i]=aspath5->seg[i].as2;
-            i++;
-            reading=reading+sizeof(struct aspath_segment);
-        }  
-    }
-    else if(*read_packet==0x04){
-        reading=aspath4->seg;
-        aspath4=read_packet;
-        while(read_packet+aspath4->length<reading){
-            bgp->table[bgp->num_of_table].path[i]=aspath4->seg[i].as2;
-            i++;
-            reading=reading+sizeof(struct aspath_segment);
-        }  
-    }
-}
-
-void nextHopWrite(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packet){
-    struct path_attr_nexthop *nexthop;
-    nexthop=read_packet;
-    bgp->table[bgp->num_of_table].nexthop=nexthop->nexthop;
-}
-
-uint8_t* read_path_attr(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packet){
-    switch (*(read_packet+1)) {
-		case ATTR_ORIGIN:	
-			return read_packet+sizeof(struct path_attr_origin);
-        case ATTR_ASPATH:
-			asPathWrite(bgp,update,read_packet);
-			if(*read_packet==0x05) return read_packet+4+(*(read_packet+3));
-            else if(*read_packet==0x04) return read_packet+3+(*(read_packet+2));
-        case ATTR_NEXTHOP:
-			nextHopWrite(bgp,update,read_packet);
-			return read_packet+sizeof(struct path_attr_nexthop); 
-        case ATTR_MED:			
-			return read_packet+sizeof(struct path_attr_med);           
-		default:
-			break;
-	} 
-}
-
-void table_write(struct BGP *bgp,struct bgp_update *update){
-    uint8_t *read_packet;
-    uint8_t *read8;
-    uint16_t *read16;
-    uint32_t *read32;
-    int path_attr_len=(int)(update->contents[1]);//2バイトの場合に非対応ver
-    read_packet=(update->contents)+2;
-    while(update->contents+2+path_attr_len>read_packet){
-        read_packet=read_path_attr(bgp,update,read_packet);
-    }
-    
-}
-
-void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int sock){
+void bgp_process_established(struct Peer *p,char *bgp_msg,int sock){
     struct bgp_hd keep;
     memcpy(&keep,bgp_msg,sizeof(keep));
     if(keep.type==TYPE_KEEP){
@@ -221,21 +159,17 @@ void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int s
         write(sock,&keep,BGP_HD_LEN);
     }
     else if(keep.type==TYPE_UPDATE){
-        /*struct bgp_update update;        
+        struct bgp_update update;        
         memset(&update,0,sizeof(update));
         int update_size;
         update_size=bgpUpdateSet(&update);
         printf("%d\n",update_size);
         write(sock,&update,update_size*sizeof(uint8_t));
-        printf("update send\n");*/
-        struct bgp_update up_read;
-        memcpy(&up_read,bgp_msg,keep.len*sizeof(uint8_t));
-
-
+        printf("update send\n");
     }  
 }  
 
-void bgp_process(struct BGP *bgp,struct Peer *p,char *bgp_msg,int sock) {
+void bgp_process(struct Peer *p,char *bgp_msg,int sock) {
 	switch (p->state) {
 		case OpenSent:
 			bgp_process_open_sent(p, bgp_msg,sock);
@@ -244,7 +178,7 @@ void bgp_process(struct BGP *bgp,struct Peer *p,char *bgp_msg,int sock) {
 			bgp_process_open_confirm(p, bgp_msg,sock);
 			break;
         case Established:
-			bgp_process_established(bgp,p, bgp_msg,sock);
+			bgp_process_established(p, bgp_msg,sock);
 			break;        
 		default:
 			break;
@@ -264,12 +198,10 @@ int exec_peer(char *ip_addr) {
     struct bgp_open op;
     struct bgp_open_opt op_recieve;
     struct bgp_hd keep;
-    struct BGP bgp;
-    bgp.num_of_table=0;
     struct Peer peer;
-    bgp.peers[0]=peer;
     fd_set rfds;
 
+    printf("size of nexthop = %zu\n",sizeof(struct path_attr_nexthop));
 
     char buf[4096];
     char bgpmsg_buf[4096];
@@ -297,14 +229,12 @@ int exec_peer(char *ip_addr) {
     write(sock,&op,BGP_OPEN_LEN);
     peer.state=OpenSent;
 
-    printf("%zu\n",sizeof(struct path_attr_aspath));
-
     while(1){
         memset(buf,0,sizeof(buf));
         read(sock,buf,sizeof(buf));
         //複数メッセージが入ってるパターンに対応させる
         memcpy(bgpmsg_buf,buf,sizeof(buf));
-        bgp_process(&bgp,&peer,bgpmsg_buf,sock);
+        bgp_process(&peer,bgpmsg_buf,sock);
 
     }
 
