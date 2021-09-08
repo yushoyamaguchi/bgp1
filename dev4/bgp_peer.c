@@ -155,7 +155,6 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
     struct path_attr_aspath *aspath5;
     struct path_attr_aspath_short *aspath4;
     if(*read_packet==0x50){
-        printf("50\n");
         aspath5=read_packet;   //AS2個目以降はみ出てる
         reading=aspath5->seg;
         while(read_packet+htons(aspath5->length)<reading){
@@ -165,7 +164,6 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
         }  
     }
     else if(*read_packet==0x40){
-        printf("40\n");
         reading=aspath4->seg;
         aspath4=read_packet;
         while(read_packet+aspath4->length<reading){
@@ -234,19 +232,20 @@ void show_table(struct BGP *bgp){
     for(i=0;i<(bgp->num_of_table);i++){
         ip_addr.s_addr=bgp->table[i].addr;
         addr_buf=inet_ntoa(ip_addr);
-        printf("%s\n",inet_ntoa(ip_addr));
         memcpy(&addr,addr_buf,10);//エラー起こったらここチェック
-        ip_addr.s_addr=bgp->table[i].addr;
+        ip_addr.s_addr=bgp->table[i].nexthop;
         nexthop_buf=inet_ntoa(ip_addr);
-        memcpy(&nexthop,nexthop_buf,sizeof(*nexthop_buf));//エラー起こったらここチェック*/
-        printf("%s  :%hhu   :%s :",addr,bgp->table[i].nexthop,nexthop);        
-        for(k=0;k<sizeof(bgp->table[i].path);k++){
+        memcpy(&nexthop,nexthop_buf,10);//エラー起こったらここチェック*/
+        printf("%s  :%hhu   :%s :",addr,bgp->table[i].subnet_mask,nexthop);        
+        /*for(k=0;k<sizeof(bgp->table[i].path);k++){
             printf(",%hhu",bgp->table[i].path[k]);
-        }
+        }*/
         
         printf("\n");
         printf("------------------------------------------");
         printf("\n");
+        printf("\n");
+
     }
 }
 
@@ -257,13 +256,12 @@ void table_write(struct BGP *bgp,struct bgp_update *update){
     uint16_t *read16;
     uint32_t *read32;
     int path_attr_len=(int)(update->contents[1]);//2バイトの場合に非対応ver
-    printf("path_attr_len=%d\n",path_attr_len);
     read_packet=(update->contents)+2;
     while(update->contents+2+path_attr_len>read_packet){
         read_packet=read_path_attr(bgp,update,read_packet);
     }
     nlri_write(bgp,update,read_packet);
-    //show_table(bgp);
+    show_table(bgp);
 }
 
 void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int sock){
