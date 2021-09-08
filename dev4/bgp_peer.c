@@ -106,7 +106,6 @@ int bgp_update_set(struct bgp_update *update){
     look_place=look_place+sizeof(origin);
     as_path_set(&aspath);
     memcpy(look_place,&aspath,sizeof(aspath));
-    //printf("size of aspath = %zu\n",sizeof(struct path_attr_aspath));
     look_place=look_place+sizeof(aspath);
     nexthop_set(&nexthop);
     memcpy(look_place,&nexthop,sizeof(nexthop));
@@ -155,16 +154,18 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
     uint8_t *reading;
     struct path_attr_aspath *aspath5;
     struct path_attr_aspath_short *aspath4;
-    if(*read_packet==0x05){
+    if(*read_packet==0x50){
+        printf("50\n");
         aspath5=read_packet;   //AS2個目以降はみ出てる
         reading=aspath5->seg;
-        while(htons(read_packet+aspath5->length)<reading){
+        while(read_packet+htons(aspath5->length)<reading){
             bgp->table[bgp->num_of_table].path[i]=aspath5->seg[i].as2;
             i++;
             reading=reading+sizeof(struct aspath_segment);
         }  
     }
-    else if(*read_packet==0x04){
+    else if(*read_packet==0x40){
+        printf("40\n");
         reading=aspath4->seg;
         aspath4=read_packet;
         while(read_packet+aspath4->length<reading){
@@ -187,8 +188,8 @@ uint8_t* read_path_attr(struct BGP *bgp,struct bgp_update *update,uint8_t *read_
 			return read_packet+sizeof(struct path_attr_origin);
         case ATTR_ASPATH:
 			as_path_write(bgp,update,read_packet);
-			if(*read_packet==0x05) return read_packet+4+(*(read_packet+3));
-            else if(*read_packet==0x04) return read_packet+3+(*(read_packet+2));
+			if(*read_packet==0x50) return read_packet+4+(*(read_packet+3));
+            else if(*read_packet==0x40) return read_packet+3+(*(read_packet+2));
         case ATTR_NEXTHOP:
 			nexthop_write(bgp,update,read_packet);
 			return read_packet+sizeof(struct path_attr_nexthop); 
@@ -232,9 +233,9 @@ void show_table(struct BGP *bgp){
     struct in_addr ip_addr;
     for(i=0;i<(bgp->num_of_table);i++){
         ip_addr.s_addr=bgp->table[i].addr;
-        //addr_buf=inet_ntoa(ip_addr);
-        //printf("%s\n",inet_ntoa(ip_addr));
-        //memcpy(&addr,addr_buf,10);//エラー起こったらここチェック
+        addr_buf=inet_ntoa(ip_addr);
+        printf("%s\n",inet_ntoa(ip_addr));
+        memcpy(&addr,addr_buf,10);//エラー起こったらここチェック
         ip_addr.s_addr=bgp->table[i].addr;
         nexthop_buf=inet_ntoa(ip_addr);
         memcpy(&nexthop,nexthop_buf,sizeof(*nexthop_buf));//エラー起こったらここチェック*/
@@ -256,14 +257,10 @@ void table_write(struct BGP *bgp,struct bgp_update *update){
     uint16_t *read16;
     uint32_t *read32;
     int path_attr_len=(int)(update->contents[1]);//2バイトの場合に非対応ver
-    printf("%d\n",path_attr_len);
+    printf("path_attr_len=%d\n",path_attr_len);
     read_packet=(update->contents)+2;
-    printf("%p\n",update->contents+2+path_attr_len);
-    printf("%p\n",read_packet);
     while(update->contents+2+path_attr_len>read_packet){
         read_packet=read_path_attr(bgp,update,read_packet);
-        printf("%p...\n",update->contents+2+path_attr_len);
-        printf("%p...\n",read_packet);
     }
     nlri_write(bgp,update,read_packet);
     //show_table(bgp);
