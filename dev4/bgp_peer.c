@@ -158,7 +158,7 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
     if(*read_packet==0x05){
         aspath5=read_packet;   //AS2個目以降はみ出てる
         reading=aspath5->seg;
-        while(read_packet+aspath5->length<reading){
+        while(htons(read_packet+aspath5->length)<reading){
             bgp->table[bgp->num_of_table].path[i]=aspath5->seg[i].as2;
             i++;
             reading=reading+sizeof(struct aspath_segment);
@@ -230,14 +230,15 @@ void show_table(struct BGP *bgp){
     char nexthop[32];
     char *nexthop_buf;
     struct in_addr ip_addr;
-    for(i=0;i<bgp->num_of_table;i++){
+    for(i=0;i<(bgp->num_of_table);i++){
         ip_addr.s_addr=bgp->table[i].addr;
-        addr_buf=inet_ntoa(ip_addr);
-        memcpy(&addr,addr_buf,sizeof(*addr_buf));//エラー起こったらここチェック
+        //addr_buf=inet_ntoa(ip_addr);
+        //printf("%s\n",inet_ntoa(ip_addr));
+        //memcpy(&addr,addr_buf,10);//エラー起こったらここチェック
         ip_addr.s_addr=bgp->table[i].addr;
         nexthop_buf=inet_ntoa(ip_addr);
-        memcpy(&nexthop,nexthop_buf,sizeof(*nexthop_buf));//エラー起こったらここチェック
-        printf("%s  :%hhu   :%s :");
+        memcpy(&nexthop,nexthop_buf,sizeof(*nexthop_buf));//エラー起こったらここチェック*/
+        printf("%s  :%hhu   :%s :",addr,bgp->table[i].nexthop,nexthop);        
         for(k=0;k<sizeof(bgp->table[i].path);k++){
             printf(",%hhu",bgp->table[i].path[k]);
         }
@@ -255,17 +256,22 @@ void table_write(struct BGP *bgp,struct bgp_update *update){
     uint16_t *read16;
     uint32_t *read32;
     int path_attr_len=(int)(update->contents[1]);//2バイトの場合に非対応ver
+    printf("%d\n",path_attr_len);
     read_packet=(update->contents)+2;
+    printf("%p\n",update->contents+2+path_attr_len);
+    printf("%p\n",read_packet);
     while(update->contents+2+path_attr_len>read_packet){
         read_packet=read_path_attr(bgp,update,read_packet);
+        printf("%p...\n",update->contents+2+path_attr_len);
+        printf("%p...\n",read_packet);
     }
     nlri_write(bgp,update,read_packet);
-    
+    //show_table(bgp);
 }
 
 void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int sock){
     struct bgp_hd keep;
-    memcpy(&keep,bgp_msg,sizeof(keep));
+    memcpy(&keep,bgp_msg,sizeof(struct bgp_hd));
     if(keep.type==TYPE_KEEP){
         memset(&keep,0,sizeof(keep));
         bgp_keep_set(&keep);
@@ -280,7 +286,9 @@ void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int s
         write(sock,&update,update_size*sizeof(uint8_t));
         printf("update send\n");*/
         struct bgp_update up_read;
-        memcpy(&up_read,bgp_msg,keep.len);
+        int bgp_length=htons(keep.len);
+        memcpy(&up_read,bgp_msg,bgp_length);
+
         table_write(bgp,&up_read);
 
 
@@ -348,8 +356,6 @@ int exec_peer(char *ip_addr) {
     bgp_open_set(&op,&myaddr);
     write(sock,&op,BGP_OPEN_LEN);
     peer.state=OpenSent;
-
-    printf("%zu\n",sizeof(struct path_attr_aspath));
 
     while(1){
         memset(buf,0,sizeof(buf));
