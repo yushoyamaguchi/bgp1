@@ -86,7 +86,7 @@ void nlriSet(struct bgp_nlri *nlri,int subnet_mask,u_int32_t addr){
 }
 
 
-int bgp_update_set(struct bgp_update *update){
+int bgp_update_set_example(struct bgp_update *update){
     int i;
     uint8_t *look_place=update->contents;
 	for(i=0;i<MARKER_NUM;i++){
@@ -126,6 +126,9 @@ int bgp_update_set(struct bgp_update *update){
     return (21+(look_place-update->contents)/sizeof(uint8_t));
 }
 
+int bgp_update_set(struct BGP *bgp,struct bgp_update *update){
+} 
+
 void bgp_process_open_sent(struct Peer *p,char *bgp_msg,int sock){
     struct bgp_open_opt open;
     struct bgp_hd keep;
@@ -143,6 +146,7 @@ void bgp_process_open_confirm(struct Peer *p,char *bgp_msg,int sock){
     memcpy(&keep,bgp_msg,sizeof(keep));
     if(keep.type==TYPE_KEEP){
         p->state=Established;
+        printf("established\n");
         memset(&keep,0,sizeof(keep));
         bgp_keep_set(&keep);
         write(sock,&keep,BGP_HD_LEN);
@@ -154,20 +158,24 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
     uint8_t *reading;
     struct path_attr_aspath *aspath5;
     struct path_attr_aspath_short *aspath4;
-    if(*read_packet==0x50){
+    if(*read_packet==flag_5){
         aspath5=read_packet;   //AS2個目以降はみ出てる
         reading=aspath5->seg;
-        while(read_packet+htons(aspath5->length)<reading){
+        printf("%p , %p\n",aspath5->seg+htons(aspath5->length),reading);
+        printf("len=%d\n",htons(aspath5->length));
+        while(aspath5->seg+htons(aspath5->length)>reading){
             bgp->table[bgp->num_of_table].path[i]=aspath5->seg[i].as2;
+            printf("as_path=%u\n",bgp->table[bgp->num_of_table].path[i]);
             i++;
             reading=reading+sizeof(struct aspath_segment);
         }  
     }
-    else if(*read_packet==0x40){
+    else if(*read_packet==flag_4){
         reading=aspath4->seg;
         aspath4=read_packet;
-        while(read_packet+aspath4->length<reading){
+        while(aspath4->seg+(aspath4->length)>reading){
             bgp->table[bgp->num_of_table].path[i]=aspath4->seg[i].as2;
+            printf("as_path=%u\n",bgp->table[bgp->num_of_table].path[i]);
             i++;
             reading=reading+sizeof(struct aspath_segment);
         }  
@@ -238,9 +246,9 @@ void show_table(struct BGP *bgp){
         nexthop_buf=inet_ntoa(ip_addr);
         memcpy(&nexthop,nexthop_buf,ADDR_STR_LEN);//エラー起こったらここチェック*/
         printf("%s  :%hhu   :%s :",addr,bgp->table[i].subnet_mask,nexthop);        
-        /*for(k=0;k<sizeof(bgp->table[i].path);k++){
+        for(k=0;k<3;k++){
             printf(",%hhu",bgp->table[i].path[k]);
-        }*/
+        }
         
         printf("\n");
         printf("------------------------------------------");
@@ -275,19 +283,17 @@ void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int s
         show_table(bgp);
     }
     else if(keep.type==TYPE_UPDATE){
-        /*struct bgp_update update;        
-        memset(&update,0,sizeof(update));
-        int update_size;
-        update_size=bgp_update_set(&update);
-        printf("%d\n",update_size);
-        write(sock,&update,update_size*sizeof(uint8_t));
-        printf("update send\n");*/
         struct bgp_update up_read;
         int bgp_length=htons(keep.len);
         memcpy(&up_read,bgp_msg,bgp_length);
-
         table_write(bgp,&up_read);
-
+        /*struct bgp_update update;        
+        memset(&update,0,sizeof(update));
+        int update_size;
+        update_size=bgp_update_set_example(&update);
+        printf("%d\n",update_size);
+        write(sock,&update,update_size*sizeof(uint8_t));
+        printf("update send\n");*/
 
     }  
 }  
@@ -330,6 +336,7 @@ void json_config(struct BGP *bgp,json_t *json_object,json_error_t *jerror){
         bgp->table[bgp->num_of_table].nexthop=inet_addr(buf);
         strcpy(buf,json_string_value(json_object_get(neighbor_object,"subnet_mask")));
         bgp->table[bgp->num_of_table].subnet_mask=atoi(buf);
+        bgp->table[bgp->num_of_table].path[0]="?";
         bgp->num_of_table++;
     }
 }
@@ -357,8 +364,6 @@ int exec_peer(char *ip_addr) {
     json_t *json_object;
     json_error_t jerror;
 
-    json_config(&bgp,json_object,&jerror);
-
     char buf[4096];
     char bgpmsg_buf[4096];
 
@@ -384,6 +389,7 @@ int exec_peer(char *ip_addr) {
     bgp_open_set(&op,&myaddr);
     write(sock,&op,BGP_OPEN_LEN);
     peer.state=OpenSent;
+    json_config(&bgp,json_object,&jerror);
 
     while(1){
         memset(buf,0,sizeof(buf));

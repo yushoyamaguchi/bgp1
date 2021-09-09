@@ -27,6 +27,9 @@
 
 #define ADDR_STR_LEN 16
 
+#define flag_5 0x50
+#define flag_4 0x40
+
 struct bgp_hd
   {
     uint8_t marker[16];
