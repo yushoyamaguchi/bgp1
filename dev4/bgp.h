@@ -25,6 +25,8 @@
 #define AS_SEQUENCE 2
 #define BYTE_SIZE 8
 
+#define ADDR_STR_LEN 16
+
 struct bgp_hd
   {
     uint8_t marker[16];
@@ -156,6 +158,7 @@ struct Peer
 
 struct BGP {
 	int asn;
+  uint32_t bgp_id;
 	struct Peer peers[256];
   struct bgp_table table[256];
   int num_of_table;

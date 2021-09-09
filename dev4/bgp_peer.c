@@ -172,6 +172,7 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
             reading=reading+sizeof(struct aspath_segment);
         }  
     }
+    bgp->table[bgp->num_of_table].path[i]="\0";
 }
 
 void nexthop_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packet){
@@ -232,10 +233,10 @@ void show_table(struct BGP *bgp){
     for(i=0;i<(bgp->num_of_table);i++){
         ip_addr.s_addr=bgp->table[i].addr;
         addr_buf=inet_ntoa(ip_addr);
-        memcpy(&addr,addr_buf,10);//エラー起こったらここチェック
+        memcpy(&addr,addr_buf,ADDR_STR_LEN);//エラー起こったらここチェック
         ip_addr.s_addr=bgp->table[i].nexthop;
         nexthop_buf=inet_ntoa(ip_addr);
-        memcpy(&nexthop,nexthop_buf,10);//エラー起こったらここチェック*/
+        memcpy(&nexthop,nexthop_buf,ADDR_STR_LEN);//エラー起こったらここチェック*/
         printf("%s  :%hhu   :%s :",addr,bgp->table[i].subnet_mask,nexthop);        
         /*for(k=0;k<sizeof(bgp->table[i].path);k++){
             printf(",%hhu",bgp->table[i].path[k]);
@@ -271,6 +272,7 @@ void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int s
         memset(&keep,0,sizeof(keep));
         bgp_keep_set(&keep);
         write(sock,&keep,BGP_HD_LEN);
+        show_table(bgp);
     }
     else if(keep.type==TYPE_UPDATE){
         /*struct bgp_update update;        
@@ -306,6 +308,32 @@ void bgp_process(struct BGP *bgp,struct Peer *p,char *bgp_msg,int sock) {
 	}
 }
 
+void json_config(struct BGP *bgp,json_t *json_object,json_error_t *jerror){
+    json_object=json_load_file("config.json",0,jerror);
+    if(json_object==NULL){
+        printf("cannot read config json\n");
+        exit(1);
+    }
+    char buf[128];
+    bgp->asn=json_integer_value(json_object_get(json_object,"router bgp"));
+    strcpy(buf,json_string_value(json_object_get(json_object,"router-id")));
+    bgp->bgp_id=inet_addr(buf);
+
+    json_t *neighbor_array;
+    json_t *neighbor_object;
+    int i=0;
+    neighbor_object=malloc(sizeof(json_t));
+    neighbor_array=json_object_get(json_object,"neighbor");
+    json_array_foreach(neighbor_array,i,neighbor_object){
+        strcpy(buf,json_string_value(json_object_get(neighbor_object,"address")));
+        bgp->table[bgp->num_of_table].addr=inet_addr(buf);
+        bgp->table[bgp->num_of_table].nexthop=inet_addr(buf);
+        strcpy(buf,json_string_value(json_object_get(neighbor_object,"subnet_mask")));
+        bgp->table[bgp->num_of_table].subnet_mask=atoi(buf);
+        bgp->num_of_table++;
+    }
+}
+
 
 
 int exec_peer(char *ip_addr) {
@@ -326,10 +354,15 @@ int exec_peer(char *ip_addr) {
     fd_set rfds;
 
 
+    json_t *json_object;
+    json_error_t jerror;
+
+    json_config(&bgp,json_object,&jerror);
+
     char buf[4096];
     char bgpmsg_buf[4096];
 
-        if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+    if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
         perror("client : socket");
         exit(1);
     }
