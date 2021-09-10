@@ -30,6 +30,8 @@
 #define flag_5 0x50
 #define flag_4 0x40
 
+#define PATH_INCOMPLETE 0xff
+
 struct bgp_hd
   {
     uint8_t marker[16];

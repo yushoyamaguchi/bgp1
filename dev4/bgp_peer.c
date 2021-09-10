@@ -161,11 +161,9 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
     if(*read_packet==flag_5){
         aspath5=read_packet;   //AS2個目以降はみ出てる
         reading=aspath5->seg;
-        printf("%p , %p\n",aspath5->seg+htons(aspath5->length),reading);
-        printf("len=%d\n",htons(aspath5->length));
-        while(aspath5->seg+htons(aspath5->length)>reading){
+        while((uint8_t *)aspath5->seg + htons(aspath5->length)>reading){
             bgp->table[bgp->num_of_table].path[i]=aspath5->seg[i].as2;
-            printf("as_path=%u\n",bgp->table[bgp->num_of_table].path[i]);
+            printf("as_path=%u,i=%d\n",htons(bgp->table[bgp->num_of_table].path[i]),i);
             i++;
             reading=reading+sizeof(struct aspath_segment);
         }  
@@ -173,14 +171,14 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
     else if(*read_packet==flag_4){
         reading=aspath4->seg;
         aspath4=read_packet;
-        while(aspath4->seg+(aspath4->length)>reading){
+        while((uint8_t *)aspath4->seg + (aspath4->length)>reading){
             bgp->table[bgp->num_of_table].path[i]=aspath4->seg[i].as2;
             printf("as_path=%u\n",bgp->table[bgp->num_of_table].path[i]);
             i++;
             reading=reading+sizeof(struct aspath_segment);
         }  
     }
-    bgp->table[bgp->num_of_table].path[i]="\0";
+    bgp->table[bgp->num_of_table].path[i]=PATH_INCOMPLETE;
 }
 
 void nexthop_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packet){
@@ -245,9 +243,9 @@ void show_table(struct BGP *bgp){
         ip_addr.s_addr=bgp->table[i].nexthop;
         nexthop_buf=inet_ntoa(ip_addr);
         memcpy(&nexthop,nexthop_buf,ADDR_STR_LEN);//エラー起こったらここチェック*/
-        printf("%s  :%hhu   :%s :",addr,bgp->table[i].subnet_mask,nexthop);        
+        printf("%s  :%u   :%s :",addr,bgp->table[i].subnet_mask,nexthop);        
         for(k=0;k<3;k++){
-            printf(",%hhu",bgp->table[i].path[k]);
+            printf(",%u",htons(bgp->table[i].path[k]));
         }
         
         printf("\n");
@@ -336,7 +334,7 @@ void json_config(struct BGP *bgp,json_t *json_object,json_error_t *jerror){
         bgp->table[bgp->num_of_table].nexthop=inet_addr(buf);
         strcpy(buf,json_string_value(json_object_get(neighbor_object,"subnet_mask")));
         bgp->table[bgp->num_of_table].subnet_mask=atoi(buf);
-        bgp->table[bgp->num_of_table].path[0]="?";
+        bgp->table[bgp->num_of_table].path[0]=PATH_INCOMPLETE;
         bgp->num_of_table++;
     }
 }
