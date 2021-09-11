@@ -63,7 +63,7 @@ struct path_attr_aspath *as_path_set(struct BGP *bgp,int table_read){
     for(i=1;i<=num_of_path;i++){
         *(aspath->seg[0].as2+i)=htons(bgp->table[table_read].path[num_of_path]);         
     }
-    aspath->length=htons(4+sizeof(uint16_t)*num_of_path);
+    aspath->length=htons(2+sizeof(uint16_t)*(num_of_path+1));   //2はseg type,seg length
     return aspath;
 }
 
@@ -75,11 +75,18 @@ void origin_set(struct path_attr_origin *origin){
     origin->origin=ORIGIN_INCOMPLETE;
 }
 
-void nexthop_set(struct path_attr_nexthop *nh){
+void nexthop_set_example(struct path_attr_nexthop *nh){
     nh->flags=0x40;
     nh->type_code=ATTR_NEXTHOP;
     nh->length=4;
     nh->nexthop=inet_addr("10.255.1.1");    //nexthopは自分自身のアドレス10.255.1.1
+}
+
+void nexthop_set(struct BGP *bgp,int table_read,struct path_attr_nexthop *nh){
+    nh->flags=0x40;
+    nh->type_code=ATTR_NEXTHOP;
+    nh->length=4;
+    nh->nexthop=bgp->table[table_read].nexthop;    //nexthopは自分自身のアドレス10.255.1.1
 }
 
 void medSet(struct path_attr_med *med){
@@ -127,7 +134,7 @@ int bgp_update_set_example(struct bgp_update *update){
     as_path_set_example(&aspath);
     memcpy(look_place,&aspath,sizeof(aspath));
     look_place=look_place+sizeof(aspath);
-    nexthop_set(&nexthop);
+    nexthop_set_example(&nexthop);
     memcpy(look_place,&nexthop,sizeof(nexthop));
     look_place=look_place+sizeof(nexthop);
     //printf("size of nexthop = %zu\n",sizeof(struct path_attr_nexthop));
@@ -165,6 +172,17 @@ int bgp_update_set(struct BGP *bgp,struct bgp_update *update){
     memcpy(look_place,&origin,sizeof(origin));
     look_place=look_place+sizeof(origin);
     aspath=as_path_set(bgp,reading_table);
+    memcpy(look_place,aspath,aspath->length+4);
+    look_place=look_place+aspath->length+4;
+    nexthop_set(bgp,reading_table,&nexthop);
+    memcpy(look_place,&nexthop,sizeof(nexthop));
+    look_place=look_place+sizeof(nexthop);
+    update->contents[1]=((look_place-update->contents)/sizeof(uint8_t))-2;  //255以上の長さに対応できるように改良する
+    //最後の2はtotal path attr lengthのバイト数
+
+    nlriSet(&nlri,(int)(bgp->table[reading_table].subnet_mask),bgp->table[reading_table].addr);
+    //nlriのaddr部分のサイズ計算
+
 } 
 
 void bgp_process_open_sent(struct Peer *p,char *bgp_msg,int sock){
