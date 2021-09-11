@@ -38,13 +38,33 @@ void bgp_keep_set(struct bgp_hd *keep){
 	keep->type=TYPE_KEEP;
 }
 
-void as_path_set(struct path_attr_aspath *aspath){
+void as_path_set_example(struct path_attr_aspath *aspath){
     aspath->flags=0x50; //属性長2オクテットで固定
     aspath->type_code=ATTR_ASPATH;
-    aspath->length=htons(6);
+    aspath->length=htons(4);
     aspath->seg[0].segment_type=AS_SEQUENCE;
     aspath->seg[0].number_of_as=1;
-    aspath->seg[0].as2=htonl(1);    //as番号は1
+    aspath->seg[0].as2[0]=htons(1);    //as番号は1
+}
+
+struct path_attr_aspath *as_path_set(struct BGP *bgp,int table_read){
+    int num_of_path=0;
+    while(htons(bgp->table[table_read].path[num_of_path])!=0xff){
+        num_of_path++;
+    }
+    struct path_attr_aspath *aspath;
+    aspath=malloc(sizeof(struct path_attr_aspath)+num_of_path*sizeof(uint16_t));
+    aspath->flags=0x50; //属性長2オクテットで固定
+    aspath->type_code=ATTR_ASPATH;
+    int i=0;
+    aspath->seg[0].segment_type=AS_SEQUENCE;
+    aspath->seg[0].number_of_as=1;
+    aspath->seg[0].as2[0]=htons((uint16_t)bgp->asn);   
+    for(i=1;i<=num_of_path;i++){
+        *(aspath->seg[0].as2+i)=htons(bgp->table[table_read].path[num_of_path]);         
+    }
+    aspath->length=htons(4+sizeof(uint16_t)*num_of_path);
+    return aspath;
 }
 
 
@@ -104,7 +124,7 @@ int bgp_update_set_example(struct bgp_update *update){
     origin_set(&origin);
     memcpy(look_place,&origin,sizeof(origin));
     look_place=look_place+sizeof(origin);
-    as_path_set(&aspath);
+    as_path_set_example(&aspath);
     memcpy(look_place,&aspath,sizeof(aspath));
     look_place=look_place+sizeof(aspath);
     nexthop_set(&nexthop);
@@ -127,6 +147,24 @@ int bgp_update_set_example(struct bgp_update *update){
 }
 
 int bgp_update_set(struct BGP *bgp,struct bgp_update *update){
+    int reading_table=bgp->num_of_table-1;
+    int i;
+    for(i=0;i<MARKER_NUM;i++){
+		update->marker[i]=0xff;
+	}
+    uint8_t *look_place=update->contents;
+    update->type=TYPE_UPDATE;
+    update->withdrawn_len=0;
+    look_place+=2;   //total path attr lengthの分
+    struct path_attr_origin origin;
+    struct path_attr_aspath *aspath;
+    struct path_attr_nexthop nexthop;
+    struct path_attr_med med;
+    struct bgp_nlri nlri;
+    origin_set(&origin);
+    memcpy(look_place,&origin,sizeof(origin));
+    look_place=look_place+sizeof(origin);
+    aspath=as_path_set(bgp,reading_table);
 } 
 
 void bgp_process_open_sent(struct Peer *p,char *bgp_msg,int sock){
@@ -163,7 +201,7 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
         reading=aspath5->seg;
         while((uint8_t *)aspath5->seg + htons(aspath5->length)>reading){
             bgp->table[bgp->num_of_table].path[i]=aspath5->seg[i].as2;
-            printf("as_path=%u,i=%d\n",htons(bgp->table[bgp->num_of_table].path[i]),i);
+            printf("update recieved\n");
             i++;
             reading=reading+sizeof(struct aspath_segment);
         }  
@@ -173,7 +211,7 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
         aspath4=read_packet;
         while((uint8_t *)aspath4->seg + (aspath4->length)>reading){
             bgp->table[bgp->num_of_table].path[i]=aspath4->seg[i].as2;
-            printf("as_path=%u\n",bgp->table[bgp->num_of_table].path[i]);
+            printf("update recieved\n");
             i++;
             reading=reading+sizeof(struct aspath_segment);
         }  
@@ -284,7 +322,14 @@ void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int s
         struct bgp_update up_read;
         int bgp_length=htons(keep.len);
         memcpy(&up_read,bgp_msg,bgp_length);
-        table_write(bgp,&up_read);
+        if(up_read.withdrawn_len==0){
+            table_write(bgp,&up_read);
+            struct bgp_update update;
+            bgp_update_set(bgp,&update);
+        }
+        else{
+
+        }
         /*struct bgp_update update;        
         memset(&update,0,sizeof(update));
         int update_size;

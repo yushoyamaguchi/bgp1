@@ -86,7 +86,7 @@ struct path_attr_origin{
 struct aspath_segment{
   uint8_t segment_type;
   uint8_t number_of_as;
-  uint16_t as2;  //可変長
+  uint16_t as2[1];  //可変長
 }__attribute__((__packed__));
 
 
