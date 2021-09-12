@@ -13,7 +13,7 @@
 #include "bgp.h"
 
 
-
+int flag_first0_else1=0;
 
 void bgp_open_set(struct bgp_open *op,struct in_addr *myaddr){
 	int i;
@@ -177,13 +177,59 @@ int bgp_update_set(struct BGP *bgp,struct bgp_update *update){
     nexthop_set(bgp,reading_table,&nexthop);
     memcpy(look_place,&nexthop,sizeof(nexthop));
     look_place=look_place+sizeof(nexthop);
-    update->contents[1]=((look_place-update->contents)/sizeof(uint8_t))-2;  //255以上の長さに対応できるように改良する
+    uint16_t *path_attr_len=update->contents;
+    *path_attr_len=htons((look_place-update->contents)-2);  //エラー起きたらここチェック
+    //update->contents[1]=((look_place-update->contents)/sizeof(uint8_t))-2;  //255以上の長さに対応できるように改良する
     //最後の2はtotal path attr lengthのバイト数
 
     nlriSet(&nlri,(int)(bgp->table[reading_table].subnet_mask),bgp->table[reading_table].addr);
     //nlriのaddr部分のサイズ計算
+    int nlri_addr_len=(int)(bgp->table[reading_table].subnet_mask)/BYTE_SIZE;
+    memcpy(look_place,&nlri,nlri_addr_len+1);
+    look_place=look_place+nlri_addr_len+1;
+    update->len=htons(21+(look_place-update->contents));
 
+    return 21+(look_place-update->contents);
 } 
+
+
+int bgp_update_set_first(struct BGP *bgp,struct bgp_update *update,int reading_table){
+    int i;
+    for(i=0;i<MARKER_NUM;i++){
+		update->marker[i]=0xff;
+	}
+    uint8_t *look_place=update->contents;
+    update->type=TYPE_UPDATE;
+    update->withdrawn_len=0;
+    look_place+=2;   //total path attr lengthの分
+    struct path_attr_origin origin;
+    struct path_attr_aspath *aspath;
+    struct path_attr_nexthop nexthop;
+    struct path_attr_med med;
+    struct bgp_nlri nlri;
+    origin_set(&origin);
+    memcpy(look_place,&origin,sizeof(origin));
+    look_place=look_place+sizeof(origin);
+    aspath=as_path_set(bgp,reading_table);
+    memcpy(look_place,aspath,aspath->length+4);
+    look_place=look_place+aspath->length+4;
+    nexthop_set(bgp,reading_table,&nexthop);
+    memcpy(look_place,&nexthop,sizeof(nexthop));
+    look_place=look_place+sizeof(nexthop);
+    uint16_t *path_attr_len=update->contents;
+    *path_attr_len=htons((look_place-update->contents)-2);  //エラー起きたらここチェック
+    //update->contents[1]=((look_place-update->contents)/sizeof(uint8_t))-2;  //255以上の長さに対応できるように改良する
+    //最後の2はtotal path attr lengthのバイト数
+
+    nlriSet(&nlri,(int)(bgp->table[reading_table].subnet_mask),bgp->table[reading_table].addr);
+    //nlriのaddr部分のサイズ計算
+    int nlri_addr_len=(int)(bgp->table[reading_table].subnet_mask)/BYTE_SIZE;
+    memcpy(look_place,&nlri,nlri_addr_len+1);
+    look_place=look_place+nlri_addr_len+1;
+    update->len=htons(21+(look_place-update->contents));
+
+    return 21+(look_place-update->contents);
+}
 
 void bgp_process_open_sent(struct Peer *p,char *bgp_msg,int sock){
     struct bgp_open_opt open;
@@ -399,6 +445,7 @@ void json_config(struct BGP *bgp,json_t *json_object,json_error_t *jerror){
         bgp->table[bgp->num_of_table].subnet_mask=atoi(buf);
         bgp->table[bgp->num_of_table].path[0]=PATH_INCOMPLETE;
         bgp->num_of_table++;
+        
     }
 }
 
