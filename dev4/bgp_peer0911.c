@@ -44,7 +44,7 @@ void as_path_set_example(struct path_attr_aspath *aspath){
     aspath->length=htons(4);
     aspath->seg[0].segment_type=AS_SEQUENCE;
     aspath->seg[0].number_of_as=1;
-    aspath->seg[0].as2[0]=htons(1);    //as番号は1
+    aspath->seg[0].as2=htons(1);    //as番号は1
 }
 
 struct path_attr_aspath *as_path_set(struct BGP *bgp,int table_read){
@@ -59,9 +59,9 @@ struct path_attr_aspath *as_path_set(struct BGP *bgp,int table_read){
     int i=0;
     aspath->seg[0].segment_type=AS_SEQUENCE;
     aspath->seg[0].number_of_as=1;
-    aspath->seg[0].as2[0]=htons((uint16_t)bgp->asn);
+    aspath->seg[0].as2=htons((uint16_t)bgp->asn);
     for(i=1;i<=num_of_path;i++){
-        *((aspath->seg[0].as2)+i)=htons(bgp->table[table_read].path[num_of_path]);
+        *(&(aspath->seg[0].as2)+i)=htons(bgp->table[table_read].path[num_of_path]);
     }
     aspath->length=htons(2+sizeof(uint16_t)*(num_of_path+1));   //2はseg type,seg length
     return aspath;
@@ -268,19 +268,12 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
     uint8_t *reading;
     struct path_attr_aspath *aspath5;
     struct path_attr_aspath_short *aspath4;
-    int k=0;
     if(*read_packet==flag_5){
         aspath5=read_packet;   //AS2個目以降はみ出てる
         reading=aspath5->seg;
-        printf("aspath_length %u\n",htons(aspath5->length));
-        printf("sizeof aspath_segment %d\n",sizeof(struct aspath_segment));
         while((uint8_t *)aspath5->seg + htons(aspath5->length)>reading){
-            printf("%p,%p\n",(uint8_t *)aspath5->seg+ htons(aspath5->length) ,reading);
-            for(k=0;k<(int)aspath5->seg[i].number_of_as;k++){
-                bgp->table[bgp->num_of_table].path[i]=aspath5->seg[i].as2[k];
-            }
-            //bgp->table[bgp->num_of_table].path[i]=aspath5->seg[i].as2[0];
-            //printf("update : path %d\n",i);
+            bgp->table[bgp->num_of_table].path[i]=aspath5->seg[i].as2;
+            printf("update recieved\n");
             i++;
             reading=reading+sizeof(struct aspath_segment);
         }
@@ -289,14 +282,12 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
         reading=aspath4->seg;
         aspath4=read_packet;
         while((uint8_t *)aspath4->seg + (aspath4->length)>reading){
-            bgp->table[bgp->num_of_table].path[i]=aspath4->seg[i].as2[0];
-            printf("path %d\n",i);
+            bgp->table[bgp->num_of_table].path[i]=aspath4->seg[i].as2;
+            printf("update recieved\n");
             i++;
             reading=reading+sizeof(struct aspath_segment);
         }
     }
-    
-    printf("i=%d\n",i);
     bgp->table[bgp->num_of_table].path[i]=PATH_INCOMPLETE;
 }
 
@@ -406,7 +397,7 @@ void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int s
         if(up_read.withdrawn_len==0){
             table_write(bgp,&up_read);
             struct bgp_update update;
-            //bgp_update_set(bgp,&update);
+            bgp_update_set(bgp,&update);
         }
         else{
 

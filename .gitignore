@@ -6,5 +6,4 @@ bgp_open
 mybgp
 *.pcap
 *.o
-*09*.c
 *08*.c
