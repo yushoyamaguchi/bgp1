@@ -272,15 +272,11 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
     if(*read_packet==flag_5){
         aspath5=read_packet;   //AS2個目以降はみ出てる
         reading=aspath5->seg;
-        printf("aspath_length %u\n",htons(aspath5->length));
-        printf("sizeof aspath_segment %d\n",sizeof(struct aspath_segment));
         while((uint8_t *)aspath5->seg + htons(aspath5->length)>reading){
-            printf("%p,%p\n",(uint8_t *)aspath5->seg+ htons(aspath5->length) ,reading);
             for(k=0;k<(int)aspath5->seg[i].number_of_as;k++){
                 bgp->table[bgp->num_of_table].path[i]=aspath5->seg[i].as2[k];
             }
             //bgp->table[bgp->num_of_table].path[i]=aspath5->seg[i].as2[0];
-            //printf("update : path %d\n",i);
             i++;
             reading=reading+sizeof(struct aspath_segment);
         }
@@ -289,8 +285,10 @@ void as_path_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packe
         reading=aspath4->seg;
         aspath4=read_packet;
         while((uint8_t *)aspath4->seg + (aspath4->length)>reading){
-            bgp->table[bgp->num_of_table].path[i]=aspath4->seg[i].as2[0];
-            printf("path %d\n",i);
+            for(k=0;k<(int)aspath4->seg[i].number_of_as;k++){
+                bgp->table[bgp->num_of_table].path[i]=aspath4->seg[i].as2[k];
+            }
+            //bgp->table[bgp->num_of_table].path[i]=aspath4->seg[i].as2[0];
             i++;
             reading=reading+sizeof(struct aspath_segment);
         }
