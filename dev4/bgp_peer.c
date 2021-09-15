@@ -38,14 +38,6 @@ void bgp_keep_set(struct bgp_hd *keep){
 	keep->type=TYPE_KEEP;
 }
 
-void as_path_set_example(struct path_attr_aspath *aspath){
-    aspath->flags=0x50; //属性長2オクテットで固定
-    aspath->type_code=ATTR_ASPATH;
-    aspath->length=htons(4);
-    aspath->seg[0].segment_type=AS_SEQUENCE;
-    aspath->seg[0].number_of_as=1;
-    aspath->seg[0].as2[0]=htons(1);    //as番号は1
-}
 
 struct path_attr_aspath *as_path_set(struct BGP *bgp,int table_read){
     int num_of_path=0;
@@ -81,18 +73,12 @@ void origin_set(struct path_attr_origin *origin){
     origin->origin=ORIGIN_INCOMPLETE;
 }
 
-void nexthop_set_example(struct path_attr_nexthop *nh){
-    nh->flags=0x40;
-    nh->type_code=ATTR_NEXTHOP;
-    nh->length=4;
-    nh->nexthop=inet_addr("10.255.1.1");    //nexthopは自分自身のアドレス10.255.1.1
-}
 
 void nexthop_set(struct BGP *bgp,int table_read,struct path_attr_nexthop *nh){
     nh->flags=0x40;
     nh->type_code=ATTR_NEXTHOP;
     nh->length=4;
-    nh->nexthop=bgp->table[table_read].nexthop;    //nexthopは自分自身のアドレス10.255.1.1
+    nh->nexthop=bgp->table[table_read].nexthop;   
 }
 
 void medSet(struct path_attr_med *med){
@@ -119,45 +105,7 @@ void nlriSet(struct bgp_nlri *nlri,int subnet_mask,u_int32_t addr){
 }
 
 
-int bgp_update_set_example(struct bgp_update *update){
-    int i;
-    uint8_t *look_place=update->contents;
-	for(i=0;i<MARKER_NUM;i++){
-		update->marker[i]=0xff;
-	}
-    update->type=TYPE_UPDATE;
-    update->withdrawn_len=0;
-    look_place+=2;   //total path attr lengthの分
-    struct path_attr_origin origin;
-    struct path_attr_aspath aspath;
-    struct path_attr_nexthop nexthop;
-    struct path_attr_med med;
-    struct bgp_nlri nlri;
 
-    origin_set(&origin);
-    memcpy(look_place,&origin,sizeof(origin));
-    look_place=look_place+sizeof(origin);
-    as_path_set_example(&aspath);
-    memcpy(look_place,&aspath,sizeof(aspath));
-    look_place=look_place+sizeof(aspath);
-    nexthop_set_example(&nexthop);
-    memcpy(look_place,&nexthop,sizeof(nexthop));
-    look_place=look_place+sizeof(nexthop);
-    //printf("size of nexthop = %zu\n",sizeof(struct path_attr_nexthop));
-    medSet(&med);
-    memcpy(look_place,&med,sizeof(med));
-    look_place=look_place+sizeof(med);
-    update->contents[1]=((look_place-update->contents)/sizeof(uint8_t))-2;  //255以上の長さに対応できるように改良する
-    //最後の2はtotal path attr lengthのバイト数
-
-    nlriSet(&nlri,24,inet_addr("10.1.0.0"));
-    memcpy(look_place,&nlri,sizeof(nlri)-sizeof(u_int8_t)*1);
-    look_place=look_place+4*(sizeof(u_int8_t)); //とりあえずこの値で
-
-    update->len=htons(21+(look_place-update->contents)/sizeof(uint8_t));
-
-    return (21+(look_place-update->contents)/sizeof(uint8_t));
-}
 
 int bgp_update_set(struct BGP *bgp,struct bgp_update *update){
     int reading_table=bgp->num_of_table-1;
@@ -211,7 +159,7 @@ int bgp_update_set_first(struct BGP *bgp,struct bgp_update *update,int reading_t
 	}
     uint8_t *look_place=update->contents;
     update->type=TYPE_UPDATE;
-    update->withdrawn_len=0;
+    update->withdrawn_len=htons(0);
     look_place+=2;   //total path attr lengthの分
     struct path_attr_origin origin;
     struct path_attr_aspath *aspath;
@@ -228,9 +176,9 @@ int bgp_update_set_first(struct BGP *bgp,struct bgp_update *update,int reading_t
     memcpy(look_place,&nexthop,sizeof(nexthop));
     look_place=look_place+sizeof(nexthop);
     uint16_t *path_attr_len=update->contents;
-    //*path_attr_len=htons((look_place-update->contents)-2);  //エラー起きたらここチェック
-    update->contents[0]=0;
-    update->contents[1]=(look_place-update->contents)-2;  //255以上の長さに対応できるように改良する
+    *path_attr_len=htons((look_place-update->contents)-2);  //エラー起きたらここチェック
+    //update->contents[0]=0;
+    //update->contents[1]=(look_place-update->contents)-2;  //255以上の長さに対応できるように改良する
     //最後の2はtotal path attr lengthのバイト数
 
     nlriSet(&nlri,(int)(bgp->table[reading_table].subnet_mask),bgp->table[reading_table].addr);
@@ -267,11 +215,12 @@ void bgp_process_open_confirm(struct BGP *bgp,struct Peer *p,char *bgp_msg,int s
         write(sock,&keep,BGP_HD_LEN);
         struct bgp_update update;
         int i,update_size;
-        /*for(i=0;i<bgp->num_of_table;i++){
+        for(i=0;i<bgp->num_of_table;i++){
             update_size=bgp_update_set_first(bgp,&update,i);
-            write(sock,&keep,update_size);
+            printf("%d\n",update_size);
+            write(sock,&update,update_size);
             memset(&update,0,update_size);
-        }*/
+        }
     }
 }
 
