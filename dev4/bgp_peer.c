@@ -185,11 +185,11 @@ int bgp_update_set(struct BGP *bgp,struct bgp_update *update){
     nexthop_set(bgp,reading_table,&nexthop);
     memcpy(look_place,&nexthop,sizeof(nexthop));
     look_place=look_place+sizeof(nexthop);
-    
+
     uint16_t *path_attr_len=update->contents;
-    //*path_attr_len=htons((look_place-update->contents)-2);  //エラー起きたらここチェック
-    update->contents[0]=0;
-    update->contents[1]=(look_place-update->contents)-2;  //255以上の長さに対応できるように改良する
+    *path_attr_len=htons((look_place-update->contents)-2);  //エラー起きたらここチェック
+    //update->contents[0]=0;
+    //update->contents[1]=(look_place-update->contents)-2;  //255以上の長さに対応できるように改良する
     //最後の2はtotal path attr lengthのバイト数
 
     nlriSet(&nlri,(int)(bgp->table[reading_table].subnet_mask),bgp->table[reading_table].addr);
