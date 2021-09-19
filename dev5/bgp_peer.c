@@ -41,7 +41,7 @@ void bgp_keep_set(struct bgp_hd *keep){
 
 struct path_attr_aspath *as_path_set(struct BGP *bgp,int table_read){
     int num_of_path=0;
-    while(bgp->table[table_read].path[num_of_path]!=htons(PATH_INCOMPLETE)){
+    while(bgp->table_entry[table_read].path[num_of_path]!=htons(PATH_INCOMPLETE)){
         num_of_path++;
     }
     struct path_attr_aspath *aspath;
@@ -58,7 +58,7 @@ struct path_attr_aspath *as_path_set(struct BGP *bgp,int table_read){
     aspath->seg[0].number_of_as=num_of_path+1;
     aspath->seg[0].as2[0]=htons((uint16_t)bgp->asn);
     for(i=1;i<=num_of_path;i++){
-        aspath->seg[0].as2[i]=bgp->table[table_read].path[i-1];
+        aspath->seg[0].as2[i]=bgp->table_entry[table_read].path[i-1];
     }
     aspath->length=htons(2+sizeof(uint16_t)*(num_of_path+1));   //2はseg type,seg length
 
@@ -140,9 +140,9 @@ int bgp_update_set(struct BGP *bgp,struct bgp_update *update){
     //update->contents[1]=(look_place-update->contents)-2;  //255以上の長さに対応できるように改良する
     //最後の2はtotal path attr lengthのバイト数
 
-    nlriSet(&nlri,(int)(bgp->table[reading_table].subnet_mask),bgp->table[reading_table].addr);
+    nlriSet(&nlri,(int)(bgp->table_entry[reading_table].subnet_mask),bgp->table_entry[reading_table].addr);
     //nlriのaddr部分のサイズ計算
-    int nlri_addr_len=(int)(bgp->table[reading_table].subnet_mask)/BYTE_SIZE;
+    int nlri_addr_len=(int)(bgp->table_entry[reading_table].subnet_mask)/BYTE_SIZE;
     memcpy(look_place,&nlri,nlri_addr_len+1);
     look_place=look_place+nlri_addr_len+1;
     update->len=htons(21+(look_place-update->contents));
@@ -181,9 +181,9 @@ int bgp_update_set_first(struct BGP *bgp,struct bgp_update *update,int reading_t
     //update->contents[1]=(look_place-update->contents)-2;  //255以上の長さに対応できるように改良する
     //最後の2はtotal path attr lengthのバイト数
 
-    nlriSet(&nlri,(int)(bgp->table[reading_table].subnet_mask),bgp->table[reading_table].addr);
+    nlriSet(&nlri,(int)(bgp->table_entry[reading_table].subnet_mask),bgp->table_entry[reading_table].addr);
     //nlriのaddr部分のサイズ計算
-    int nlri_addr_len=(int)(bgp->table[reading_table].subnet_mask)/BYTE_SIZE;
+    int nlri_addr_len=(int)(bgp->table_entry[reading_table].subnet_mask)/BYTE_SIZE;
     memcpy(look_place,&nlri,nlri_addr_len+1);
     look_place=look_place+nlri_addr_len+1;
     update->len=htons(21+(look_place-update->contents));
@@ -235,7 +235,7 @@ void as_path_table_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read
         reading=aspath5->seg;
         while((uint8_t *)aspath5->seg + htons(aspath5->length)>reading){
             for(k=0;k<(int)aspath5->seg[i].number_of_as;k++){
-                bgp->table[bgp->num_of_table].path[path_serial_num]=aspath5->seg[i].as2[k];
+                bgp->table_entry[bgp->num_of_table].path[path_serial_num]=aspath5->seg[i].as2[k];
                 path_serial_num++;
             }
             i++;
@@ -247,7 +247,7 @@ void as_path_table_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read
         aspath4=read_packet;
         while((uint8_t *)aspath4->seg + (aspath4->length)>reading){
             for(k=0;k<(int)aspath4->seg[i].number_of_as;k++){
-                bgp->table[bgp->num_of_table].path[path_serial_num]=aspath4->seg[i].as2[k];
+                bgp->table_entry[bgp->num_of_table].path[path_serial_num]=aspath4->seg[i].as2[k];
                 path_serial_num++;
             }
             i++;
@@ -255,13 +255,13 @@ void as_path_table_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read
         }
     }
 
-    bgp->table[bgp->num_of_table].path[i]=htons(PATH_INCOMPLETE);
+    bgp->table_entry[bgp->num_of_table].path[i]=htons(PATH_INCOMPLETE);
 }
 
 void nexthop_table_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packet){
     struct path_attr_nexthop *nexthop;
     nexthop=read_packet;
-    bgp->table[bgp->num_of_table].nexthop=nexthop->nexthop;
+    bgp->table_entry[bgp->num_of_table].nexthop=nexthop->nexthop;
 }
 
 uint8_t* read_path_attr(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packet){
@@ -283,11 +283,11 @@ uint8_t* read_path_attr(struct BGP *bgp,struct bgp_update *update,uint8_t *read_
 }
 
 void nlri_table_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packet){
-    bgp->table[bgp->num_of_table].subnet_mask=*read_packet;
+    bgp->table_entry[bgp->num_of_table].subnet_mask=*read_packet;
     uint8_t sub_mask=*read_packet;
     read_packet++;
     uint8_t sub_calc=sub_mask;
-    uint8_t *table_addr=&(bgp->table[bgp->num_of_table].addr);
+    uint8_t *table_addr=&(bgp->table_entry[bgp->num_of_table].addr);
     while(sub_calc>=BYTE_SIZE){
         memcpy(table_addr,read_packet,sizeof(uint8_t));
         table_addr+=sizeof(uint8_t);
@@ -307,7 +307,7 @@ void show_table(struct BGP *bgp){
     int i,k=0;
     printf("------------------------------------------");
     printf("\n");
-    printf("addr    :mask   :nexthop    :aspath\n");
+    printf("best:addr    :mask   :nexthop    :aspath\n");
     printf("------------------------------------------");
     printf("\n");
     char addr[32];
@@ -316,15 +316,15 @@ void show_table(struct BGP *bgp){
     char *nexthop_buf;
     struct in_addr ip_addr;
     for(i=0;i<(bgp->num_of_table);i++){
-        ip_addr.s_addr=bgp->table[i].addr;
+        ip_addr.s_addr=bgp->table_entry[i].addr;
         addr_buf=inet_ntoa(ip_addr);
         memcpy(&addr,addr_buf,ADDR_STR_LEN);//エラー起こったらここチェック
-        ip_addr.s_addr=bgp->table[i].nexthop;
+        ip_addr.s_addr=bgp->table_entry[i].nexthop;
         nexthop_buf=inet_ntoa(ip_addr);
         memcpy(&nexthop,nexthop_buf,ADDR_STR_LEN);//エラー起こったらここチェック*/
-        printf("%s  :%u   :%s :",addr,bgp->table[i].subnet_mask,nexthop);
+        printf("%d  :%s  :%u   :%s :",bgp->table_entry[i].state.isBest,addr,bgp->table_entry[i].subnet_mask,nexthop);
         for(k=0;k<3;k++){
-            printf(",%u",htons(bgp->table[i].path[k]));
+            printf(",%u",htons(bgp->table_entry[i].path[k]));
         }
 
         printf("\n");
@@ -335,9 +335,31 @@ void show_table(struct BGP *bgp){
     printf("\n");
 }
 
+int num_of_as(struct BGP *bgp,uint16_t *aspath,int reading){
+    int i=0;
+    while(bgp->table_entry[reading].path[i]!=PATH_INCOMPLETE){
+        i++;
+    }
+    return i;
+}
 
-void best_path_selection(struct BGP *bgp,struct bgp_update *update){
-
+void best_path_selection(struct BGP *bgp,struct bgp_update *update,int table_tail){
+    int i=1;
+    int shortest_aspath_length=4096;
+    int preliminary_shortest_num=0;
+    int as_num=0;
+    uint32_t dest_addr=bgp->table_entry[table_tail].addr;
+    for(i=0;i<=table_tail;i++){
+        if(bgp->table_entry[i].addr==dest_addr){
+            as_num=num_of_as(bgp,bgp->table_entry[i].path,i);
+            if(as_num<shortest_aspath_length){
+                preliminary_shortest_num=i;
+                shortest_aspath_length=as_num;
+            }
+            bgp->table_entry[i].state.isBest=0;
+        }
+    }
+    bgp->table_entry[preliminary_shortest_num].state.isBest=1;
 }
 
 
@@ -352,6 +374,7 @@ void table_write(struct BGP *bgp,struct bgp_update *update){
         read_packet=read_path_attr(bgp,update,read_packet);
     }
     nlri_table_write(bgp,update,read_packet);
+    best_path_selection(bgp,update,bgp->num_of_table-1);
     show_table(bgp);
 }
 
@@ -372,9 +395,14 @@ void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int s
         memcpy(&up_read,bgp_msg,bgp_length);
         if(up_read.withdrawn_len==0){
             table_write(bgp,&up_read);
-            struct bgp_update update;
+            if(bgp->table_entry[bgp->num_of_table-1].state.isBest==1){
+                struct bgp_update update;
+                update_size =bgp_update_set(bgp,&update);
+                write(sock,&update,update_size);  
+            }
+            /*struct bgp_update update;
             update_size =bgp_update_set(bgp,&update);
-            write(sock,&update,update_size);
+            write(sock,&update,update_size);*/
         }
         else{
             //withdrawn
@@ -418,11 +446,12 @@ void json_config(struct BGP *bgp,json_t *json_object,json_error_t *jerror){
     neighbor_array=json_object_get(json_object,"networks");
     json_array_foreach(neighbor_array,i,neighbor_object){
         strcpy(buf,json_string_value(json_object_get(neighbor_object,"address")));
-        bgp->table[bgp->num_of_table].addr=inet_addr(buf);
-        bgp->table[bgp->num_of_table].nexthop=inet_addr(buf);
+        bgp->table_entry[bgp->num_of_table].addr=inet_addr(buf);
+        bgp->table_entry[bgp->num_of_table].nexthop=inet_addr(buf);
         strcpy(buf,json_string_value(json_object_get(neighbor_object,"subnet_mask")));
-        bgp->table[bgp->num_of_table].subnet_mask=atoi(buf);
-        bgp->table[bgp->num_of_table].path[0]=htons(PATH_INCOMPLETE);
+        bgp->table_entry[bgp->num_of_table].subnet_mask=atoi(buf);
+        bgp->table_entry[bgp->num_of_table].path[0]=htons(PATH_INCOMPLETE);
+        bgp->table_entry[bgp->num_of_table].state.isBest=1;
         bgp->num_of_table++;
     }
 }

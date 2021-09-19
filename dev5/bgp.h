@@ -134,7 +134,7 @@ struct route_state{
   _Bool isIBGP;
 }__attribute__((__packed__));
 
-struct bgp_table{
+struct bgp_table_entry{
   struct route_state state;
   uint32_t addr;
   uint8_t subnet_mask;
@@ -166,7 +166,7 @@ struct BGP {
   uint32_t bgp_id;
   uint32_t ip_addr;
 	struct Peer peers[256];
-  struct bgp_table table[256];
+  struct bgp_table_entry table_entry[256];
   int num_of_table;
 };
 
