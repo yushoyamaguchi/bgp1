@@ -332,6 +332,12 @@ void show_table(struct BGP *bgp){
         printf("\n");
 
     }
+    printf("\n");
+}
+
+
+void best_path_selection(struct BGP *bgp,struct bgp_update *update){
+
 }
 
 
@@ -361,6 +367,7 @@ void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int s
     else if(keep.type==TYPE_UPDATE){
         struct bgp_update up_read;
         int update_size=0;
+        printf("update recieved\n");
         int bgp_length=htons(keep.len);
         memcpy(&up_read,bgp_msg,bgp_length);
         if(up_read.withdrawn_len==0){
@@ -418,7 +425,6 @@ void json_config(struct BGP *bgp,json_t *json_object,json_error_t *jerror){
         bgp->table[bgp->num_of_table].path[0]=htons(PATH_INCOMPLETE);
         bgp->num_of_table++;
     }
-    printf("start num of table=%d\n",bgp->num_of_table);
 }
 
 
