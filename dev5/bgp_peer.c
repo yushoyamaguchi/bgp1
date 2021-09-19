@@ -78,7 +78,7 @@ void nexthop_set(struct BGP *bgp,int table_read,struct path_attr_nexthop *nh){
     nh->flags=0x40;
     nh->type_code=ATTR_NEXTHOP;
     nh->length=4;
-    nh->nexthop=bgp->table[table_read].nexthop;   
+    nh->nexthop=bgp->ip_addr;   
 }
 
 void medSet(struct path_attr_med *med){
@@ -229,13 +229,14 @@ void as_path_table_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read
     uint8_t *reading;
     struct path_attr_aspath *aspath5;
     struct path_attr_aspath_short *aspath4;
-    int k=0;
+    int k,path_serial_num=0;
     if(*read_packet==flag_5){
         aspath5=read_packet;   //AS2個目以降はみ出てる
         reading=aspath5->seg;
         while((uint8_t *)aspath5->seg + htons(aspath5->length)>reading){
             for(k=0;k<(int)aspath5->seg[i].number_of_as;k++){
-                bgp->table[bgp->num_of_table].path[i]=aspath5->seg[i].as2[k];
+                bgp->table[bgp->num_of_table].path[path_serial_num]=aspath5->seg[i].as2[k];
+                path_serial_num++;
             }
             i++;
             reading=reading+sizeof(struct aspath_segment);
@@ -246,7 +247,8 @@ void as_path_table_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read
         aspath4=read_packet;
         while((uint8_t *)aspath4->seg + (aspath4->length)>reading){
             for(k=0;k<(int)aspath4->seg[i].number_of_as;k++){
-                bgp->table[bgp->num_of_table].path[i]=aspath4->seg[i].as2[k];
+                bgp->table[bgp->num_of_table].path[path_serial_num]=aspath4->seg[i].as2[k];
+                path_serial_num++;
             }
             i++;
             reading=reading+sizeof(struct aspath_segment);
@@ -354,7 +356,7 @@ void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int s
         memset(&keep,0,sizeof(keep));
         bgp_keep_set(&keep);
         write(sock,&keep,BGP_HD_LEN);
-        show_table(bgp);
+        //show_table(bgp);
     }
     else if(keep.type==TYPE_UPDATE){
         struct bgp_update up_read;
@@ -390,7 +392,7 @@ void bgp_process(struct BGP *bgp,struct Peer *p,char *bgp_msg,int sock) {
 }
 
 void json_config(struct BGP *bgp,json_t *json_object,json_error_t *jerror){
-    json_object=json_load_file("config0918.json",0,jerror);
+    json_object=json_load_file("config.json",0,jerror);
     if(json_object==NULL){
         printf("cannot read config json\n");
         exit(1);
@@ -399,12 +401,14 @@ void json_config(struct BGP *bgp,json_t *json_object,json_error_t *jerror){
     bgp->asn=json_integer_value(json_object_get(json_object,"router bgp"));
     strcpy(buf,json_string_value(json_object_get(json_object,"router-id")));
     bgp->bgp_id=inet_addr(buf);
+    strcpy(buf,json_string_value(json_object_get(json_object,"ip-address")));
+    bgp->ip_addr=inet_addr(buf);
 
     json_t *neighbor_array;
     json_t *neighbor_object;
     int i=0;
     neighbor_object=malloc(sizeof(json_t));
-    neighbor_array=json_object_get(json_object,"neighbor");
+    neighbor_array=json_object_get(json_object,"networks");
     json_array_foreach(neighbor_array,i,neighbor_object){
         strcpy(buf,json_string_value(json_object_get(neighbor_object,"address")));
         bgp->table[bgp->num_of_table].addr=inet_addr(buf);
@@ -413,8 +417,8 @@ void json_config(struct BGP *bgp,json_t *json_object,json_error_t *jerror){
         bgp->table[bgp->num_of_table].subnet_mask=atoi(buf);
         bgp->table[bgp->num_of_table].path[0]=htons(PATH_INCOMPLETE);
         bgp->num_of_table++;
-
     }
+    printf("start num of table=%d\n",bgp->num_of_table);
 }
 
 

@@ -1,15 +1,13 @@
 {
     "router bgp": 1, 
     "router-id": "1.1.1.1", 
-    "neighbors": 
+    "neighbor": 
     [
         {
             "address": "10.255.1.2", 
+            "subnet_mask":"32",
             "remote-as": 2
-        }
-    ],
-    "networks":
-    [
+        },
         {
             "address": "10.1.0.0",
             "subnet_mask":"24"

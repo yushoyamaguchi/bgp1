@@ -390,7 +390,7 @@ void bgp_process(struct BGP *bgp,struct Peer *p,char *bgp_msg,int sock) {
 }
 
 void json_config(struct BGP *bgp,json_t *json_object,json_error_t *jerror){
-    json_object=json_load_file("config0918.json",0,jerror);
+    json_object=json_load_file("config.json",0,jerror);
     if(json_object==NULL){
         printf("cannot read config json\n");
         exit(1);

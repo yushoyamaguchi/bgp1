@@ -1,6 +1,7 @@
 {
     "router bgp": 1, 
     "router-id": "1.1.1.1", 
+    "ip-address": "10.255.1.1",
     "neighbors": 
     [
         {
