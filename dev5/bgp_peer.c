@@ -15,6 +15,10 @@
 
 int flag_first0_else1=0;
 
+char subnet_mask_8byte[5][128]={"0.0.0.0","255.0.0.0","255.255.0.0","255.255.255.0","255.255.255.255"};
+
+
+
 void bgp_open_set(struct bgp_open *op,struct in_addr *myaddr){
 	int i;
 	for(i=0;i<MARKER_NUM;i++){
@@ -378,6 +382,30 @@ void table_write(struct BGP *bgp,struct bgp_update *update){
     show_table(bgp);
 }
 
+void add_routing_table(struct BGP *bgp,struct bgp_table_entry *entry,int num){
+    char command[128]="route add ";
+    char *str_ptr;
+    char buf[32];
+    struct in_addr ip_addr;
+    ip_addr.s_addr=entry[num].addr;
+    str_ptr=inet_ntoa(ip_addr);
+    memcpy(buf,str_ptr,ADDR_STR_LEN);//エラー起こったらここチェック
+    strcat(command,"-net ");
+    strcat(command,buf);
+    memset(buf,0,ADDR_STR_LEN);
+    strcat(command," netmask ");
+    strcat(command,subnet_mask_8byte[entry[num].subnet_mask/8]);
+    ip_addr.s_addr=entry[num].nexthop;
+    str_ptr=inet_ntoa(ip_addr);
+    memcpy(buf,str_ptr,ADDR_STR_LEN);//エラー起こったらここチェック
+    strcat(command," gw ");
+    strcat(command,buf);
+    printf("%s\n",command);
+    if(system(command)==-1){
+        printf("command error\n");
+    }
+}
+
 void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int sock){
     struct bgp_hd keep;
     memcpy(&keep,bgp_msg,sizeof(struct bgp_hd));
@@ -396,13 +424,13 @@ void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int s
         if(up_read.withdrawn_len==0){
             table_write(bgp,&up_read);
             if(bgp->table_entry[bgp->num_of_table-1].state.isBest==1){
+                if(bgp->table_entry[bgp->num_of_table-1].addr!=bgp->ip_addr){
+                    add_routing_table(bgp,bgp->table_entry,bgp->num_of_table-1);
+                }
                 struct bgp_update update;
                 update_size =bgp_update_set(bgp,&update);
                 write(sock,&update,update_size);  
             }
-            /*struct bgp_update update;
-            update_size =bgp_update_set(bgp,&update);
-            write(sock,&update,update_size);*/
         }
         else{
             //withdrawn

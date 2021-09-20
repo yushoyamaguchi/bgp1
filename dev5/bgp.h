@@ -32,6 +32,8 @@
 
 #define PATH_INCOMPLETE 0xffff
 
+
+
 struct bgp_hd
   {
     uint8_t marker[16];
