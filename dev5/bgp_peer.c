@@ -400,7 +400,7 @@ void add_routing_table(struct BGP *bgp,struct bgp_table_entry *entry,int num){
     memcpy(buf,str_ptr,ADDR_STR_LEN);//エラー起こったらここチェック
     strcat(command," gw ");
     strcat(command,buf);
-    printf("%s\n",command);
+    //printf("%s\n",command);
     if(system(command)==-1){
         printf("command error\n");
     }
