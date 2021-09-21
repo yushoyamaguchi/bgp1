@@ -286,7 +286,7 @@ uint8_t* read_path_attr(struct BGP *bgp,struct bgp_update *update,uint8_t *read_
 	}
 }
 
-void nlri_table_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packet){
+uint8_t *nlri_table_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packet){
     bgp->table_entry[bgp->num_of_table].subnet_mask=*read_packet;
     uint8_t sub_mask=*read_packet;
     read_packet++;
@@ -305,9 +305,10 @@ void nlri_table_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_pa
         subnet_rest-=BYTE_SIZE;
     }
     bgp->num_of_table++;
+    return read_packet;
 }
 
-void nlri_table_write2(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packet){
+uint8_t *nlri_table_write2(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packet){
     bgp->table_entry[bgp->num_of_table].subnet_mask=*read_packet;
     uint8_t sub_mask=*read_packet;
     read_packet++;
@@ -325,7 +326,16 @@ void nlri_table_write2(struct BGP *bgp,struct bgp_update *update,uint8_t *read_p
         table_addr+=sizeof(uint8_t);
         subnet_rest-=BYTE_SIZE;
     }
+    //上の情報をコピーしてくる
+    bgp->table_entry[bgp->num_of_table].nexthop=bgp->table_entry[bgp->num_of_table-1].nexthop;
+    int i=0;
+    while(bgp->table_entry[bgp->num_of_table-1].path[i]!=PATH_INCOMPLETE){
+        bgp->table_entry[bgp->num_of_table].path[i]=bgp->table_entry[bgp->num_of_table-1].path[i];
+        i++;
+    }
+    bgp->table_entry[bgp->num_of_table].path[i]=PATH_INCOMPLETE;
     bgp->num_of_table++;
+    return read_packet;
 }
 
 void show_table(struct BGP *bgp){
@@ -390,17 +400,17 @@ void best_path_selection(struct BGP *bgp,struct bgp_update *update,int table_tai
 
 void table_write(struct BGP *bgp,struct bgp_update *update,int length){
     uint8_t *read_packet;
+    uint8_t *nlri;
     int path_attr_len=(int)(update->contents[1]);//2バイトの場合に非対応ver
     read_packet=(update->contents)+2;
     while(update->contents+2+path_attr_len>read_packet){
         read_packet=read_path_attr(bgp,update,read_packet);
+    }    
+    nlri=nlri_table_write(bgp,update,read_packet);
+    while(nlri!=update->marker+length){
+        printf("nlri:%p,end:%p\n",nlri,update->marker+length);
+        nlri=nlri_table_write2(bgp,update,nlri);
     }
-    printf("%p\n",read_packet);
-    nlri_table_write(bgp,update,read_packet);
-    printf("cuttent:%p,end:%p\n",read_packet,update->marker+length);
-    /*struct in_addr addr;
-    addr.s_addr=bgp->table_entry[bgp->num_of_table-1].addr;
-    printf("%s\n",inet_ntoa(addr));*/
     best_path_selection(bgp,update,bgp->num_of_table-1);
     show_table(bgp);
 }
