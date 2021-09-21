@@ -140,9 +140,6 @@ int bgp_update_set(struct BGP *bgp,struct bgp_update *update){
 
     uint16_t *path_attr_len=update->contents;
     *path_attr_len=htons((look_place-update->contents)-2);  //エラー起きたらここチェック
-    //update->contents[0]=0;
-    //update->contents[1]=(look_place-update->contents)-2;  //255以上の長さに対応できるように改良する
-    //最後の2はtotal path attr lengthのバイト数
 
     nlriSet(&nlri,(int)(bgp->table_entry[reading_table].subnet_mask),bgp->table_entry[reading_table].addr);
     //nlriのaddr部分のサイズ計算
@@ -181,9 +178,6 @@ int bgp_update_set_first(struct BGP *bgp,struct bgp_update *update,int reading_t
     look_place=look_place+sizeof(nexthop);
     uint16_t *path_attr_len=update->contents;
     *path_attr_len=htons((look_place-update->contents)-2);  //エラー起きたらここチェック
-    //update->contents[0]=0;
-    //update->contents[1]=(look_place-update->contents)-2;  //255以上の長さに対応できるように改良する
-    //最後の2はtotal path attr lengthのバイト数
 
     nlriSet(&nlri,(int)(bgp->table_entry[reading_table].subnet_mask),bgp->table_entry[reading_table].addr);
     //nlriのaddr部分のサイズ計算
@@ -402,7 +396,9 @@ void table_write(struct BGP *bgp,struct bgp_update *update,int length){
     uint8_t *read_packet;
     uint8_t *nlri;
     int path_attr_len;
-    path_attr_len=(int)(update->contents[1]);//2バイトの場合に非対応ver
+    uint16_t *path_attr_len16=update->contents;
+    path_attr_len=(int)htons(*path_attr_len16);
+
     read_packet=(update->contents)+2;
     while(update->contents+2+path_attr_len>read_packet){
         read_packet=read_path_attr(bgp,read_packet);
@@ -578,8 +574,6 @@ int exec_peer(char *ip_addr) {
         bgp_process(&bgp,&peer,bgpmsg_buf,sock);
 
     }
-
-
 
     close(sock);
     return 0;
