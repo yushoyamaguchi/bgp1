@@ -307,6 +307,27 @@ void nlri_table_write(struct BGP *bgp,struct bgp_update *update,uint8_t *read_pa
     bgp->num_of_table++;
 }
 
+void nlri_table_write2(struct BGP *bgp,struct bgp_update *update,uint8_t *read_packet){
+    bgp->table_entry[bgp->num_of_table].subnet_mask=*read_packet;
+    uint8_t sub_mask=*read_packet;
+    read_packet++;
+    uint8_t sub_calc=sub_mask;
+    uint8_t *table_addr=&(bgp->table_entry[bgp->num_of_table].addr);
+    while(sub_calc>=BYTE_SIZE){
+        memcpy(table_addr,read_packet,sizeof(uint8_t));
+        table_addr+=sizeof(uint8_t);
+        read_packet+=sizeof(uint8_t);
+        sub_calc-=BYTE_SIZE;
+    }
+    uint8_t subnet_rest=32-sub_mask;
+    while(subnet_rest>0){
+        memset(table_addr,0,sizeof(uint8_t));
+        table_addr+=sizeof(uint8_t);
+        subnet_rest-=BYTE_SIZE;
+    }
+    bgp->num_of_table++;
+}
+
 void show_table(struct BGP *bgp){
     int i,k=0;
     printf("------------------------------------------");
@@ -339,7 +360,7 @@ void show_table(struct BGP *bgp){
     printf("\n");
 }
 
-int num_of_as(struct BGP *bgp,uint16_t *aspath,int reading){
+int num_of_as(struct BGP *bgp,int reading){
     int i=0;
     while(bgp->table_entry[reading].path[i]!=PATH_INCOMPLETE){
         i++;
@@ -355,7 +376,7 @@ void best_path_selection(struct BGP *bgp,struct bgp_update *update,int table_tai
     uint32_t dest_addr=bgp->table_entry[table_tail].addr;
     for(i=0;i<=table_tail;i++){
         if(bgp->table_entry[i].addr==dest_addr){
-            as_num=num_of_as(bgp,bgp->table_entry[i].path,i);
+            as_num=num_of_as(bgp,i);
             if(as_num<shortest_aspath_length){
                 preliminary_shortest_num=i;
                 shortest_aspath_length=as_num;
@@ -367,17 +388,19 @@ void best_path_selection(struct BGP *bgp,struct bgp_update *update,int table_tai
 }
 
 
-void table_write(struct BGP *bgp,struct bgp_update *update){
+void table_write(struct BGP *bgp,struct bgp_update *update,int length){
     uint8_t *read_packet;
-    uint8_t *read8;
-    uint16_t *read16;
-    uint32_t *read32;
     int path_attr_len=(int)(update->contents[1]);//2バイトの場合に非対応ver
     read_packet=(update->contents)+2;
     while(update->contents+2+path_attr_len>read_packet){
         read_packet=read_path_attr(bgp,update,read_packet);
     }
+    printf("%p\n",read_packet);
     nlri_table_write(bgp,update,read_packet);
+    printf("cuttent:%p,end:%p\n",read_packet,update->marker+length);
+    /*struct in_addr addr;
+    addr.s_addr=bgp->table_entry[bgp->num_of_table-1].addr;
+    printf("%s\n",inet_ntoa(addr));*/
     best_path_selection(bgp,update,bgp->num_of_table-1);
     show_table(bgp);
 }
@@ -408,7 +431,9 @@ void add_routing_table(struct BGP *bgp,struct bgp_table_entry *entry,int num){
 
 void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int sock){
     struct bgp_hd keep;
+    int len;
     memcpy(&keep,bgp_msg,sizeof(struct bgp_hd));
+    len=htons(keep.len);
     if(keep.type==TYPE_KEEP){
         memset(&keep,0,sizeof(keep));
         bgp_keep_set(&keep);
@@ -422,7 +447,7 @@ void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int s
         int bgp_length=htons(keep.len);
         memcpy(&up_read,bgp_msg,bgp_length);
         if(up_read.withdrawn_len==0){
-            table_write(bgp,&up_read);
+            table_write(bgp,&up_read,len);
             if(bgp->table_entry[bgp->num_of_table-1].state.isBest==1){
                 if(bgp->table_entry[bgp->num_of_table-1].addr!=bgp->ip_addr){
                     add_routing_table(bgp,bgp->table_entry,bgp->num_of_table-1);
