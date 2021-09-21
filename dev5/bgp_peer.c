@@ -139,7 +139,7 @@ int bgp_update_set(struct BGP *bgp,struct bgp_update *update){
     look_place=look_place+sizeof(nexthop);
 
     uint16_t *path_attr_len=update->contents;
-    *path_attr_len=htons((look_place-update->contents)-2);  //エラー起きたらここチェック
+    *path_attr_len=htons((look_place-update->contents)-2);  
 
     nlriSet(&nlri,(int)(bgp->table_entry[reading_table].subnet_mask),bgp->table_entry[reading_table].addr);
     //nlriのaddr部分のサイズ計算
@@ -177,7 +177,7 @@ int bgp_update_set_first(struct BGP *bgp,struct bgp_update *update,int reading_t
     memcpy(look_place,&nexthop,sizeof(nexthop));
     look_place=look_place+sizeof(nexthop);
     uint16_t *path_attr_len=update->contents;
-    *path_attr_len=htons((look_place-update->contents)-2);  //エラー起きたらここチェック
+    *path_attr_len=htons((look_place-update->contents)-2);  
 
     nlriSet(&nlri,(int)(bgp->table_entry[reading_table].subnet_mask),bgp->table_entry[reading_table].addr);
     //nlriのaddr部分のサイズ計算
@@ -320,7 +320,7 @@ uint8_t *nlri_table_write2(struct BGP *bgp,uint8_t *read_packet){
         table_addr+=sizeof(uint8_t);
         subnet_rest-=BYTE_SIZE;
     }
-    //上の情報をコピーしてくる
+    //上の要素の情報をコピーしてくる
     bgp->table_entry[bgp->num_of_table].nexthop=bgp->table_entry[bgp->num_of_table-1].nexthop;
     int i=0;
     while(bgp->table_entry[bgp->num_of_table-1].path[i]!=PATH_INCOMPLETE){
@@ -430,7 +430,6 @@ void add_routing_table(struct BGP *bgp,struct bgp_table_entry *entry,int num){
     memcpy(buf,str_ptr,ADDR_STR_LEN);//エラー起こったらここチェック
     strcat(command," gw ");
     strcat(command,buf);
-    //printf("%s\n",command);
     if(system(command)==-1){
         printf("command error\n");
     }
@@ -445,7 +444,6 @@ void bgp_process_established(struct BGP *bgp, struct Peer *p,char *bgp_msg,int s
         memset(&keep,0,sizeof(keep));
         bgp_keep_set(&keep);
         write(sock,&keep,BGP_HD_LEN);
-        //show_table(bgp);
     }
     else if(keep.type==TYPE_UPDATE){
         struct bgp_update up_read;
@@ -569,7 +567,7 @@ int exec_peer(char *ip_addr) {
     while(1){
         memset(buf,0,sizeof(buf));
         read(sock,buf,sizeof(buf));
-        //複数メッセージが入ってるパターンに対応させる
+        //複数メッセージが入ってるパターンに非対応
         memcpy(bgpmsg_buf,buf,sizeof(buf));
         bgp_process(&bgp,&peer,bgpmsg_buf,sock);
 
